@@ -3,9 +3,20 @@ from vizone.client import get_default_instance
 from vizone.client import HTTPServerError, HTTPClientError
 from vizone.resource.asset import get_asset_by_id, create_asset
 from vizone.payload.asset import Item
+from vizone.payload.common import AtomCategory
 
 
-def create_or_update_placeholder(id=None, metadata=None, client=None, log_id=-1):
+def create_or_update_placeholder(
+        id=None,
+        metadata=None,
+        acl=None,
+        mediaacl=None,
+        tags=None,
+        materialtype=None,
+        category=None,
+        rightscode=None,
+        client=None,
+        log_id=-1):
     """
     Creates or Updates an Item with a given ``id``. Metadata updates will
     be retried three times if there are conflicts.
@@ -13,6 +24,12 @@ def create_or_update_placeholder(id=None, metadata=None, client=None, log_id=-1)
     Args:
         id (Optional[unicode]): An asset id or "site identity"
         metadata (Optional[vizone.vdf.Payload]): The metadata to update to
+        acl (Optional[vizone.vizone.payload.user_group.Acl]): Specify a ACL when creating the Asset
+        mediaacl (Optional[vizone.vizone.payload.user_group.Acl]): Specify a Media ACL when creating the Asset
+        tags (Optional[dict]): scheme => term dictionary for custom tags when creating the Asset
+        materialtype (Optional[unicode]): Set the Material Type to this when creating the Asset
+        category (Optional[unicode]): Set the Category to this when creating the Asset
+        rightscode (Optional[unicode]): Set the Rights Code to this when creating the Asset
         client (Optional[vizone.client.Instance]): A Viz One client to use (None means the default)
         log_id (Optional[int): Log id to use in log prints
 
@@ -30,6 +47,23 @@ def create_or_update_placeholder(id=None, metadata=None, client=None, log_id=-1)
         try:
             logging.info(u'(%i) Item %s does not exist, creating.', log_id, id)
             asset = Item(id=id)
+
+            if acl:
+                asset.acl = acl
+            if mediaacl:
+                asset.mediaacl = mediaacl
+            if materialtype:
+                asset.materialtype = materialtype
+            if category:
+                asset.category = category
+            if rightscode:
+                asset.rightscode = rightscode
+            if tags:
+                for scheme, term in sorted(tags.items()):
+                    asset.keywords.append(
+                        AtomCategory(scheme=scheme, term=term)
+                    )
+
             asset = create_asset(asset, client=client)
         except (HTTPClientError, HTTPServerError):
             logging.error(u'(%i) Could not create asset %s, skipping.', log_id, id)
