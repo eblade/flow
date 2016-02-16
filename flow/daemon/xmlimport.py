@@ -40,12 +40,12 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
 
     Example ini file for using this importer:
 
-       [Flow]
-       class = flow.daemon.xmlimport.XmlImport
+        [Flow]
+        class = flow.daemon.xmlimport.XmlImport
 
-       [Source]
-       location = xmlimport
-       skip empty files = no
+        [Source]
+        location = xmlimport
+        skip empty files = no
 
     Note that the "skip empty files" option has the following effect:
 
