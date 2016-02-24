@@ -3,6 +3,7 @@
 from gevent import monkey; monkey.patch_all() 
 from gevent.pool import Pool
 
+import sys
 import ConfigParser
 
 from vizone import logging
@@ -23,6 +24,8 @@ tool.add_argument('--instance-name', '-n', default="default",
                   help='unique instance name')
 tool.add_argument('--workers', '-w', type=int, default=1,
                   help='number of workers')
+tool.add_argument('--man', action="store_true",
+                  help="Show man page for the loaded daemon")
 
 def get_stomp(tool, args):
     if hasattr(get_stomp, 'cached'):
@@ -62,6 +65,10 @@ if __name__ == '__main__':
     stomp = None
 
     Flow = to_class(config.get('Flow', 'class'))
+
+    if args.man:
+        help(Flow)
+        sys.exit(0)
 
     source = Flow.SOURCE(**{k.replace(' ', '_'): v for k, v in config.items('Source')})
     equip(tool, args, client, config, Flow.SOURCE, source)
