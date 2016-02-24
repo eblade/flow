@@ -4,9 +4,11 @@ from vizone.client import HTTPServerError, HTTPClientError
 from vizone.resource.asset import get_asset_by_id, create_asset
 from vizone.payload.asset import Item
 from vizone.payload.common import AtomCategory
+from vizone.payload.metadata import MetadataFormCollection
+from vizone.vdf import Model
 
 
-def create_or_update_placeholder(
+def create_or_update_asset(
         id=None,
         metadata=None,
         acl=None,
@@ -23,7 +25,7 @@ def create_or_update_placeholder(
 
     Args:
         id (Optional[unicode]): An asset id or "site identity"
-        metadata (Optional[vizone.vdf.Payload]): The metadata to update to
+        metadata (Optional[vizone.vdf.Payload]): The metadata to update to. Can be a dict with a 'form' field too.
         acl (Optional[vizone.vizone.payload.user_group.Acl]): Specify a ACL when creating the Asset
         mediaacl (Optional[vizone.vizone.payload.user_group.Acl]): Specify a Media ACL when creating the Asset
         tags (Optional[dict]): scheme => term dictionary for custom tags when creating the Asset
@@ -36,13 +38,13 @@ def create_or_update_placeholder(
     Returns:
         vizone.payload.asset.Item: The updated or created Asset Entry
     """
-    old_metadata = None
+    old_payload = None
     client = client or get_default_instance()
 
     # Create or Update Placeholder
     try:
         asset = get_asset_by_id(id, headers={'X-Inline': 'describedby'}, client=client)
-        old_metadata = asset.describedby_link.metadata
+        old_payload = asset.describedby_link.metadata
     except HTTPClientError:
         try:
             logging.info(u'(%i) Item %s does not exist, creating.', log_id, id)
@@ -69,12 +71,27 @@ def create_or_update_placeholder(
             logging.error(u'(%i) Could not create asset %s, skipping.', log_id, id)
             return
     
+    # Create payload if metadata is a dict
+    if type(metadata) is dict:
+        form = metadata.pop('form')
+        if old_payload is None:
+            models = MetadataFormCollection(client.GET(asset.models_link))
+            model_link = [model.self_link for model in models.entries if model.name == form][0]
+            model = Model(client.GET(model_link))
+            payload = model.to_payload()
+        else:
+            payload = old_payload
+        for name, value in metadata.items():
+            payload.set(name, value)
+    else:
+        payload = metadata
+
     # Update Metadata if needed
-    if metadata is not None and metadata != old_metadata:
+    if payload is not None and payload != old_payload:
         logging.info(u'(%i) Updating metadata for asset %s.', log_id, asset.id)
         for _ in range(3):
             try:
-                client.PUT(asset.describedby_link, metadata)
+                client.PUT(asset.describedby_link, payload)
                 break
             except HTTPServerError:
                 logging.error(u'(%i) Could not update metadata for asset %s.', log_id, asset.id)

@@ -1,19 +1,23 @@
-from flow import Flow, NeedsStore, NeedsClient
+from lxml import etree
+from datetime import date, time, datetime
+
+from flow import Flow, NeedsStore, NeedsClient, NeedsConfig
 from flow.event import UnmanagedFilesListener
 from flow.operation import (
-    create_or_update_placeholder,
+    create_or_update_asset,
     delete_unmanaged_file,
     import_unmanaged_file,
 )
 from flow.util import Locked
 
 from vizone import logging
+from vizone.iso8601 import Timestamp
 from vizone.urilist import UriList
 from vizone.payload.asset import Item
-from vizone.payload.metadata.importexport import ImportExport
+from vizone.payload.metadata import ImportExport
 
 
-class XmlImport(Flow, NeedsClient, NeedsStore):
+class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     """
     XML + Media Importer using the Unmanaged File API.
 
@@ -51,12 +55,85 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
 
         yes: Tail mode
         no: No tail mode
+
+        [Xml]
+        format = default|custom
+
+    If you choose ``default`` here, the daemon will do a default Viz One XML Import
+    based on the standard Import/Export format.
+
+    On the other hand, if you want a custom XML to be imported you can choose
+    ``custom`` and it will be parsed and mapped according to the following 
+    rules specified by these sections in the INI:
+
+        [Namespaces]
+        short = http://long/name
+        ...
+
+    Namespaces are optional. You will need to specify only the once used in the fields
+    you want to parse.
+
+        [Field:NAME]
+        xpath = /path/to/value
+        type = string|integer|date|time|datetime
+        format = formatstring for parsing dates
+
+    For each field you want to parse, create one of these. For string fields, you only
+    need the ``xpath``, since ``type`` defaults to ``string``. The value will be stored
+    under the name NAME for later use with the mapper.
+
+        [Transform]
+        NAME = EXPR
+        compound_field = field1 + ':' + field2
+
+    The ``Transform`` section allows for simple data transformation. The left-hand side
+    denotes the name to store under and the right-hand side should contain a valid
+    python expression using the names from ``Field`` directives and previous ``Transform``
+    operations. They will be carried out in the order they are written.
+
+        [Vdf]
+        form = FORM
+        asset.title = FIELD1
+        asset.alternativeTItle = FIELD2
+        ...
+    
+    Last is the actual mapping taking place, where you can put the stored data into VDF
+    fields. Remember to specify the form here. The current revision is always used, you
+    should not try to specify a revision.
     """
 
     SOURCE = UnmanagedFilesListener
 
-    def start(self, f, info=None, log_id=-1):
+    def configure(self, config):
+        self.mappings = {}
+        self.xml_format = config.get("Xml", "format")
 
+        if self.xml_format == 'default':  # else custom
+            return
+
+        if config.has_section("Namespaces"):
+            self.namespaces = {k: v for k, v in config.items("Namespaces")}
+        else:
+            self.namespaces = {}
+
+        self.fields = {}
+        for section in config.sections():
+            if section.startswith("Field:"):
+                fieldname = section[6:]
+                field = Field(fieldname, **{k.replace(' ', '_'): v for k, v in config.items(section)})
+                self.fields[fieldname] = field
+
+        if config.has_section("Transforms"):
+            self.transforms = config.items("Transforms")
+        else:
+            self.transforms = {}
+
+        if config.has_section("Vdf"):
+            self.vdf_mappings = {k: v for k, v in config.items("Vdf")}
+        else:
+            self.vdf_mappings = {}
+
+    def start(self, f, info=None, log_id=-1):
         # Queue up multiple events for the same file
         with Locked(f.title):
             logging.info('(%i) Processing XML file %s.', log_id, f.title)
@@ -66,12 +143,25 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
                     logging.info('(%i) Skipping empty XML file %s.', log_id, f.title)
                     return
                 
+                # Extract and translate the metadata from the XML
+                media_filename = None
+                if self.xml_format == 'default':
+                    xml = ImportExport(self.client.GET(f.media.url))
+                    metadata= (xml.describedby_link.metadata 
+                               if xml.describedby_link is not None else None)
+                    if xml.content and xml.content.src:
+                        media_filename = xml.content.src
+                    asset_id = xml.id
+
+                # Custom Xml mode requires some further settings in the INI
+                elif self.xml_format == 'custom':
+                    r = self.client.GET(f.media.url)
+                    asset_id, media_filename, metadata = self.custom_parse(f.title, r.content, log_id)
+
                 # Create or Update a placeholder, including Metadata update from XML
-                xml = ImportExport(self.client.GET(f.media.url))
-                asset = create_or_update_placeholder(
-                    id=xml.id,
-                    metadata=xml.describedby_link.metadata 
-                             if xml.describedby_link is not None else None,
+                asset = create_or_update_asset(
+                    id=asset_id,
+                    metadata=metadata, # may be a vizone.vdf.Payload or a dict
                     client=self.client,
                     log_id=log_id,
                 )
@@ -89,11 +179,11 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
                     return
 
                 # Check if a media file waas mentioned in atom:content/@src
-                if xml.content and xml.content.src:
-                    logging.info('(%i) Wants media file %s.', log_id, xml.content.src)
+                if media_filename:
+                    logging.info('(%i) Wants media file %s.', log_id, media_filename)
 
                     # Check if we have a MIN for it already
-                    stored_info = self.store.get(xml.content.src)
+                    stored_info = self.store.get(media_filename)
                     if stored_info is not None and stored_info.get('type') == 'media':
 
                         # Start the import
@@ -103,11 +193,11 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
                             client=self.client,
                             log_id=log_id,
                         )
-                        self.store.delete(xml.content.src)
+                        self.store.delete(media_filename)
                     else:
                         logging.info('(%i) Remember media file %s -> asset %s.',
-                                     log_id, xml.content.src, asset.id)
-                        self.store.put(xml.content.src,
+                                     log_id, media_filename, asset.id)
+                        self.store.put(media_filename,
                                        {'type': 'asset', 'link': asset.self_link.href})
 
             else:  # Media file
@@ -131,6 +221,80 @@ class XmlImport(Flow, NeedsClient, NeedsStore):
                                  log_id, f.title, f.self_link.href)
                     self.store.put(f.title, {'type': 'media', 'link': f.self_link.href})
 
+    def custom_parse(self, filename, xml_string, log_id):
+        dom = etree.fromstring(xml_string)
+
+        # Parsing
+        data = {
+            'xml_filename': filename,
+        }
+        for fieldname, field in self.fields.items():
+            elements = dom.xpath(field.xpath, namespaces=self.namespaces)
+            raw_value = elements[0] if len(elements) else None
+            try:
+                raw_value = raw_value.text
+            except:
+                pass
+            data[fieldname] = field.get_value(raw_value)
+        logging.log("(%i) Data" % log_id, data, 'pp')
+
+        # Transforming
+        for fieldname, expr in self.transforms:
+            data[fieldname] = eval(expr, data)
+        if '__builtins__' in data.keys():
+            del data['__builtins__'] 
+        logging.log("(%i) Data Post Transform" % log_id, data, 'pp')
+
+        # Writing to VDF
+        vdf = {}
+        for fieldname, expr in self.vdf_mappings.items():
+            vdf[fieldname] = eval(expr, data)
+
+        logging.log("(%i) Vdf" % log_id, vdf, 'pp')
+        media_filename = data.get('media_filename')
+        asset_id = data.get('asset_id')
+        return asset_id, media_filename, vdf
+
 
 def is_xml(f):
     return f.title.lower().endswith('.xml')
+
+
+class Field(object):
+    Types = {"string", "integer", "float", "iso", "date", "time", "datetime"}
+
+    def __init__(self, name, xpath=None, type="string", format=None, default_timezone="UTC"):
+        self.name = name
+        self.xpath = xpath
+        self.type = type
+        self.format = format
+        self.default_timezone = default_timezone
+
+        assert xpath is not None, "Field %s is missing an xpath" % self.name
+        assert type in Field.Types, "Field %s type %s is not in %s" % (self.name, self.type, str(Field.Types))
+        if self.type in {"date", "time", "datetime"}:
+            assert self.format, "Field %s of type %s requires format" % (self.name, self.type)
+
+    def get_value(self, raw_value):
+        if self.type == "string":
+            return raw_value
+        elif self.type == "integer":
+            return int(raw_value)
+        elif self.type == "float":
+            return float(raw_value)
+        elif self.type == "iso":
+            return Timestamp(raw_value)
+        elif self.type == "date":
+            d = datetime.strptime(raw_value, self.format).date()
+            t = Timestamp(d.isoformat())
+            return t
+        elif self.type == "time":
+            d = datetime.strptime(raw_value, self.format).time()
+            t = Timestamp(d.isoformat())
+            return t
+        elif self.type == "datetime":
+            d = datetime.strptime(raw_value, self.format)
+            t = Timestamp(d.isoformat())
+            if not t.has_tz():
+                t = t.assume(self.default_timezone)
+            return t.utc()

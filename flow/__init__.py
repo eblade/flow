@@ -17,3 +17,7 @@ class NeedsStore(object):
     def set_store(self, store):
         self.store = store
     
+class NeedsConfig(object):
+    def configure(self, config):
+        raise NotImplemented("You must implement configure(self, ConfigParser)")
+    

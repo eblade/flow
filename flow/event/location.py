@@ -1,5 +1,3 @@
-#!/usr/bin/env wrap_python
-
 from vizone import logging
 from vizone.opensearch import FeedIterator
 from vizone.resource.unmanaged_file import get_unmanaged_files
@@ -26,7 +24,7 @@ class UnmanagedFilesListener(NeedsClient, NeedsStomp):
         SOURCE = UnmanagedFilesListener
 
         def start(self, f, info=None, log_id=-1):
-            # f is an vizone.payload.media.UnmanagedFile
+            # f is a vizone.payload.media.UnmanagedFile
             # info contains the header
             # log_id is a unique number for the process spawned for this event
             pass

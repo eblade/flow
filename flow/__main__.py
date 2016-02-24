@@ -12,7 +12,7 @@ from vizone.classutils import to_class
 
 from .store import Store
 from .util import LogId
-from . import NeedsStomp, NeedsClient, NeedsStore
+from . import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 
 
 # Initialize as "tool" with standard command line args
@@ -41,7 +41,7 @@ def get_stomp(tool, args):
     return get_stomp.cached
 
 
-def equip(tool, args, client, klass, obj):
+def equip(tool, args, client, config, klass, obj):
     if issubclass(klass, NeedsStomp):
         stomp = get_stomp(tool, args)
         obj.set_stomp(stomp)
@@ -49,6 +49,8 @@ def equip(tool, args, client, klass, obj):
         obj.set_client(client)
     if issubclass(klass, NeedsStore):
         obj.set_store(Store("flow_" + args.instance_name, client))
+    if issubclass(klass, NeedsConfig):
+        obj.configure(config)
 
 
 if __name__ == '__main__':
@@ -62,10 +64,10 @@ if __name__ == '__main__':
     Flow = to_class(config.get('Flow', 'class'))
 
     source = Flow.SOURCE(**{k.replace(' ', '_'): v for k, v in config.items('Source')})
-    equip(tool, args, client, Flow.SOURCE, source)
+    equip(tool, args, client, config, Flow.SOURCE, source)
 
     flow = Flow(instance_name=args.instance_name)
-    equip(tool, args, client, Flow, flow)
+    equip(tool, args, client, config, Flow, flow)
 
     tool.message_queue = stomp
 
@@ -73,7 +75,9 @@ if __name__ == '__main__':
     log_id = LogId()
 
     def work(obj, info):
-        pool.spawn(flow.start, obj, info=info, log_id=log_id.next())
+        current_log_id = log_id.next()
+        pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
+        logging.info("(%i) Done.", current_log_id)
 
     source.callback = work
     source.run()
