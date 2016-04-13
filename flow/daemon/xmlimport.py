@@ -15,6 +15,7 @@ from vizone.iso8601 import Timestamp
 from vizone.urilist import UriList
 from vizone.payload.asset import Item
 from vizone.payload.metadata import ImportExport
+from vizone.payload.dictionary import Dictionary
 
 
 class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
@@ -24,7 +25,7 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     - If an XML file comes in, it will be read as an Import/Export payload and
       a Placeholder will be created (or updated if id is given and an asset
       with that id exists).
-    
+
     - If a non-XML file comes in, it will be considered "media".
 
     - If this "media" is mentioned by some read Import/Export payload, it will
@@ -63,7 +64,7 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     based on the standard Import/Export format.
 
     On the other hand, if you want a custom XML to be imported you can choose
-    ``custom`` and it will be parsed and mapped according to the following 
+    ``custom`` and it will be parsed and mapped according to the following
     rules specified by these sections in the INI:
 
         [Namespaces]
@@ -75,12 +76,15 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
 
         [Field:NAME]
         xpath = /path/to/value
-        type = string|integer|date|time|datetime
+        type = string|integer|date|time|datetime|dictionary
         format = formatstring for parsing dates
 
     For each field you want to parse, create one of these. For string fields, you only
     need the ``xpath``, since ``type`` defaults to ``string``. The value will be stored
-    under the name NAME for later use with the mapper.
+    under the name NAME for later use with the mapper. Fields of type ``dictionary``
+    will require a ``source`` argument, being an http link to the dictionary feed. Field
+    of type ``datetime`` support a ``default timezone`` argument, which should be parsable
+    by python; for instance ``Europe/Stockholm`` or ``GMT``.
 
         [Transform]
         NAME = EXPR
@@ -96,7 +100,7 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
         asset.title = FIELD1
         asset.alternativeTItle = FIELD2
         ...
-    
+
     Last is the actual mapping taking place, where you can put the stored data into VDF
     fields. Remember to specify the form here. The current revision is always used, you
     should not try to specify a revision.
@@ -142,12 +146,12 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
                 if f.media.filesize == 0:
                     logging.info('(%i) Skipping empty XML file %s.', log_id, f.title)
                     return
-                
+
                 # Extract and translate the metadata from the XML
                 media_filename = None
                 if self.xml_format == 'default':
                     xml = ImportExport(self.client.GET(f.media.url))
-                    metadata= (xml.describedby_link.metadata 
+                    metadata= (xml.describedby_link.metadata
                                if xml.describedby_link is not None else None)
                     if xml.content and xml.content.src:
                         media_filename = xml.content.src
@@ -235,14 +239,14 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
                 raw_value = raw_value.text
             except:
                 pass
-            data[fieldname] = field.get_value(raw_value)
+            data[fieldname] = field.get_value(raw_value, self.client)
         logging.log("(%i) Data" % log_id, data, 'pp')
 
         # Transforming
         for fieldname, expr in self.transforms:
             data[fieldname] = eval(expr, data)
         if '__builtins__' in data.keys():
-            del data['__builtins__'] 
+            del data['__builtins__']
         logging.log("(%i) Data Post Transform" % log_id, data, 'pp')
 
         # Writing to VDF
@@ -261,21 +265,27 @@ def is_xml(f):
 
 
 class Field(object):
-    Types = {"string", "integer", "float", "iso", "date", "time", "datetime"}
+    Types = {"string", "integer", "float", "iso", "date", "time", "datetime", "dictionary"}
+    DictionaryCache = {}
 
-    def __init__(self, name, xpath=None, type="string", format=None, default_timezone="UTC"):
+    def __init__(self, name, xpath=None, type="string", format=None, default_timezone="UTC", source=None):
         self.name = name
         self.xpath = xpath
         self.type = type
         self.format = format
+        self.source = source
         self.default_timezone = default_timezone
 
         assert xpath is not None, "Field %s is missing an xpath" % self.name
         assert type in Field.Types, "Field %s type %s is not in %s" % (self.name, self.type, str(Field.Types))
         if self.type in {"date", "time", "datetime"}:
             assert self.format, "Field %s of type %s requires format" % (self.name, self.type)
+        if type is "dictionary":
+            assert self.source, "Field %s of type %s requires source" % (self.name, self.type)
 
-    def get_value(self, raw_value):
+    def get_value(self, raw_value, client):
+        if raw_value is None:
+            return None
         if self.type == "string":
             return raw_value
         elif self.type == "integer":
@@ -298,3 +308,14 @@ class Field(object):
             if not t.has_tz():
                 t = t.assume(self.default_timezone)
             return t.utc()
+        elif self.type == "dictionary":
+            with Locked("DictionaryCache"):
+                if self.source in Field.DictionaryCache.keys():
+                    dictionary = Field.DictionaryCache[self.source]
+                else:
+                    dictionary = Dictionary(client.GET(self.source))
+            try:
+                return [term for term in dictionary.entries if term.key == raw_value].pop(0)
+            except IndexError:
+                logging.error('Key "%s" missing in dictionary "%s" for field "%s".' %
+                              (raw_value, self.source, self.name))
