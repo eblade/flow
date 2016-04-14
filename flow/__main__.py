@@ -11,9 +11,10 @@ from vizone.tool import Tool
 from vizone.net.message_queue import ConnectionManager
 from vizone.classutils import to_class
 
+from .base import Once
+from .logging import LogId
+from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 from .store import Store
-from .util import LogId
-from . import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 
 
 # Initialize as "tool" with standard command line args
@@ -78,14 +79,19 @@ if __name__ == '__main__':
 
     tool.message_queue = stomp
 
-    pool = Pool(args.workers)
-    log_id = LogId()
+    if issubclass(Flow.SOURCE, Once):
+        source.callback = flow.start
+        tool.run(source.run)
 
-    def work(obj, info):
-        current_log_id = log_id.next()
-        pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
-        logging.info("(%i) Done.", current_log_id)
+    else:
+        pool = Pool(args.workers)
+        log_id = LogId()
 
-    source.callback = work
-    source.run()
-    tool.run()
+        def work(obj, info):
+            current_log_id = log_id.next()
+            pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
+            logging.info("(%i) Done.", current_log_id)
+
+        source.callback = work
+        source.run()
+        tool.run()
