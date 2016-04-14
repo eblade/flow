@@ -1,14 +1,15 @@
 from lxml import etree
 from datetime import date, time, datetime
 
-from flow import Flow, NeedsStore, NeedsClient, NeedsConfig
-from flow.event import UnmanagedFilesListener
+from flow import Flow
+from flow.needs import NeedsStore, NeedsClient, NeedsConfig
+from flow.source import UnmanagedFilesListener
 from flow.operation import (
     create_or_update_asset,
     delete_unmanaged_file,
     import_unmanaged_file,
 )
-from flow.util import Locked
+from flow.lock import Locked
 
 from vizone import logging
 from vizone.iso8601 import Timestamp
