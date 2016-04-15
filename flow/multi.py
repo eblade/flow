@@ -24,14 +24,14 @@ class Pool(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        logging.info("Exit pool.")
+        logging.debug("Exit pool.")
         if self.join:
             for thread in self.threads.values():
                 thread.join(self.timeout)
-                logging.info("Exit joined %s. (%s)", thread.name,
+                logging.debug("Exit joined %s. (%s)", thread.name,
                         "timed out" if thread.is_alive() else "ok")
         total_time = time.time() - self.start_time
-        logging.info("Ran %i tasks in %f seconds (avg %f seconds per task).",
+        logging.debug("Ran %i tasks in %f seconds (avg %f seconds per task).",
                 self.counter, total_time, self.avg_time)
 
     def _next_id(self, control=False):
@@ -42,12 +42,12 @@ class Pool(object):
         return ("control_" if control else "worker_") + str(self.counter)
 
     def _control(self, thread):
-        logging.info("Start control thread for %s.", thread.name)
+        logging.debug("Start control thread for %s.", thread.name)
         start_time = time.time()
         thread.start()
         thread.join(self.timeout)
         end_time = time.time()
-        logging.info("Control thread joined %s. (%s)", thread.name,
+        logging.debug("Control thread joined %s. (%s)", thread.name,
                 "timed out" if thread.is_alive() else "ok")
         self.counter_lock.acquire()
         self.avg_time = (self.avg_time + (end_time - start_time)) / 2
@@ -57,10 +57,10 @@ class Pool(object):
         self.threads_lock.release()
 
         self.resource.release()
-        logging.info("Exit control thread for %s.", thread.name)
+        logging.debug("Exit control thread for %s.", thread.name)
 
     def spawn(self, worker, *args, **kwargs):
-        logging.info("Start spawn.")
+        logging.debug("Start spawn.")
         self.resource.acquire()
 
         worker_thread = threading.Thread(
@@ -82,5 +82,5 @@ class Pool(object):
         self.threads[worker_thread.name] = control_thread
         self.threads_lock.release()
 
-        logging.info("Spawn starts control thread %s.", control_thread.name)
+        logging.debug("Spawn starts control thread %s.", control_thread.name)
         control_thread.start()

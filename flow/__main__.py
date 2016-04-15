@@ -1,6 +1,7 @@
 #!/usr/bin/env wrap_python
 
 import sys
+import os
 import ConfigParser
 
 from vizone import logging
@@ -8,7 +9,7 @@ from vizone.tool import Tool
 from vizone.net.message_queue import ConnectionManager
 from vizone.classutils import to_class
 
-from .base import Once, Throttled
+from .base import Once, Iterable, EventBased
 from .multi import Pool
 from .logging import LogId
 from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
@@ -63,6 +64,9 @@ if __name__ == '__main__':
 
     stomp = None
 
+    working_dir = os.path.dirname(os.path.abspath(args.profile))
+    os.chdir(working_dir)
+    sys.path.append(working_dir)
     Flow = to_class(config.get('Flow', 'class'))
 
     if args.man:
@@ -80,30 +84,24 @@ if __name__ == '__main__':
     # Run source.run once, which should call the workers' start method once or
     # more. No parallelisation is done here
     if issubclass(Flow.SOURCE, Once):
-        source.callback = flow.start
-        tool.run(source.run)
+        obj, info = source.run()
+        flow.start(obj, info)
 
     # Run source.run multiple times as long as there are free workers in the
-    # pool. Stop when source.run raises StopIteration.
-    elif issubclass(Flow.SOURCE, Throttled):
+    # pool. Stop when source.next() raises StopIteration.
+    elif issubclass(Flow.SOURCE, Iterable):
         with Pool(workers=args.workers, join=True) as pool:
             log_id = LogId()
 
-            def work(obj, info):
+            for obj, info in source:
                 current_log_id = log_id.next()
-                pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
-                logging.info(
+                pool.spawn(flow.run, obj, info=info, log_id=current_log_id)
+                logging.debug(
                     "(%i) Spawned worker.",
                     current_log_id
                 )
 
-            source.callback = work
-            while True:
-                try:
-                    source.run()
-                except StopIteration:
-                    logging.info("Source is out of data.")
-                    break
+            logging.info("Source is out of data.")
 
 
     # Run source.run once and go to an idle loop. Source is typically an
