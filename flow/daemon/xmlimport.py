@@ -10,13 +10,13 @@ from flow.operation import (
     import_unmanaged_file,
 )
 from flow.lock import Locked
+from flow.data import MultiParser
 
 from vizone import logging
 from vizone.iso8601 import Timestamp
 from vizone.urilist import UriList
 from vizone.payload.asset import Item
 from vizone.payload.metadata import ImportExport
-from vizone.payload.dictionary import Dictionary
 
 
 class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
@@ -266,57 +266,14 @@ def is_xml(f):
 
 
 class Field(object):
-    Types = {"string", "integer", "float", "iso", "date", "time", "datetime", "dictionary"}
-    DictionaryCache = {}
-
-    def __init__(self, name, xpath=None, type="string", format=None, default_timezone="UTC", source=None):
+    def __init__(self, name, xpath=None, **kwargs):
         self.name = name
         self.xpath = xpath
-        self.type = type
-        self.format = format
-        self.source = source
-        self.default_timezone = default_timezone
-
-        assert xpath is not None, "Field %s is missing an xpath" % self.name
-        assert type in Field.Types, "Field %s type %s is not in %s" % (self.name, self.type, str(Field.Types))
-        if self.type in {"date", "time", "datetime"}:
-            assert self.format, "Field %s of type %s requires format" % (self.name, self.type)
-        if type is "dictionary":
-            assert self.source, "Field %s of type %s requires source" % (self.name, self.type)
+        assert self.xpath is not None, "Field %s is missing an xpath" % self.name
+        try:
+            self._parser = MultiParser(**kwargs)
+        except AssertionError as e:
+            raise AssertionError(("Field %s:" % (self.name)) + str(e))
 
     def get_value(self, raw_value, client):
-        if raw_value is None:
-            return None
-        if self.type == "string":
-            return raw_value
-        elif self.type == "integer":
-            return int(raw_value)
-        elif self.type == "float":
-            return float(raw_value)
-        elif self.type == "iso":
-            return Timestamp(raw_value)
-        elif self.type == "date":
-            d = datetime.strptime(raw_value, self.format).date()
-            t = Timestamp(d.isoformat())
-            return t
-        elif self.type == "time":
-            d = datetime.strptime(raw_value, self.format).time()
-            t = Timestamp(d.isoformat())
-            return t
-        elif self.type == "datetime":
-            d = datetime.strptime(raw_value, self.format)
-            t = Timestamp(d.isoformat())
-            if not t.has_tz():
-                t = t.assume(self.default_timezone)
-            return t.utc()
-        elif self.type == "dictionary":
-            with Locked("DictionaryCache"):
-                if self.source in Field.DictionaryCache.keys():
-                    dictionary = Field.DictionaryCache[self.source]
-                else:
-                    dictionary = Dictionary(client.GET(self.source))
-            try:
-                return [term for term in dictionary.entries if term.key == raw_value].pop(0)
-            except IndexError:
-                logging.error('Key "%s" missing in dictionary "%s" for field "%s".' %
-                              (raw_value, self.source, self.name))
+        return self._parser.convert(raw_value, client)

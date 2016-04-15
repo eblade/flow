@@ -1,4 +1,4 @@
-from gevent.coros import BoundedSemaphore
+from threading import Lock
 
 
 class LogId(object):
@@ -14,11 +14,11 @@ class LogId(object):
     """
     def __init__(self):
         self._count = 0
-        self._semaphore = BoundedSemaphore(1)
+        self._lock = Lock()
 
     def next(self):
-        self._semaphore.acquire()
+        self._lock.acquire()
         returned_id = self._count
         self._count += 1
-        self._semaphore.release()
+        self._lock.release()
         return returned_id

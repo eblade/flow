@@ -1,8 +1,5 @@
 #!/usr/bin/env wrap_python
 
-from gevent import monkey; monkey.patch_all() 
-from gevent.pool import Pool
-
 import sys
 import ConfigParser
 
@@ -11,7 +8,8 @@ from vizone.tool import Tool
 from vizone.net.message_queue import ConnectionManager
 from vizone.classutils import to_class
 
-from .base import Once
+from .base import Once, Throttled
+from .multi import Pool
 from .logging import LogId
 from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 from .store import Store
@@ -79,19 +77,47 @@ if __name__ == '__main__':
 
     tool.message_queue = stomp
 
+    # Run source.run once, which should call the workers' start method once or
+    # more. No parallelisation is done here
     if issubclass(Flow.SOURCE, Once):
         source.callback = flow.start
         tool.run(source.run)
 
+    # Run source.run multiple times as long as there are free workers in the
+    # pool. Stop when source.run raises StopIteration.
+    elif issubclass(Flow.SOURCE, Throttled):
+        with Pool(workers=args.workers, join=True) as pool:
+            log_id = LogId()
+
+            def work(obj, info):
+                current_log_id = log_id.next()
+                pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
+                logging.info(
+                    "(%i) Spawned worker.",
+                    current_log_id
+                )
+
+            source.callback = work
+            while True:
+                try:
+                    source.run()
+                except StopIteration:
+                    logging.info("Source is out of data.")
+                    break
+
+
+    # Run source.run once and go to an idle loop. Source is typically an
+    # event listener of some kind and will call the callback upon 
+    # external triggers.
     else:
-        pool = Pool(args.workers)
-        log_id = LogId()
+        with Pool(workers=args.workers, join=True) as pool:
+            log_id = LogId()
 
-        def work(obj, info):
-            current_log_id = log_id.next()
-            pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
-            logging.info("(%i) Done.", current_log_id)
+            def work(obj, info):
+                current_log_id = log_id.next()
+                pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
+                logging.info("(%i) Spawned.", current_log_id)
 
-        source.callback = work
-        source.run()
-        tool.run()
+            source.callback = work
+            source.run()
+            tool.run()

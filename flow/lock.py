@@ -1,13 +1,13 @@
-from gevent.coros import BoundedSemaphore
+from threading import Lock
 
 
 _locks = {}
-_internal_lock = BoundedSemaphore(1)
+_internal_lock = Lock()
 
 
 def _lock(key):
     _internal_lock.acquire()
-    lock = _locks.get(key) or BoundedSemaphore(1)
+    lock = _locks.get(key) or Lock()
     lock.acquire()
     if not key in _locks:
         _locks[key] = lock
@@ -16,7 +16,7 @@ def _lock(key):
 
 def _unlock(key):
     _internal_lock.acquire()
-    lock = _locks.get(key) or BoundedSemaphore(1)
+    lock = _locks.get(key) or Lock()
     lock.release()
     if key in _locks:
         del _locks[key]
