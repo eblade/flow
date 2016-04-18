@@ -5,6 +5,8 @@ from vizone import logging
 
 class Pool(object):
     def __init__(self, workers=1, join=True, timeout=60):
+        logging.info("Create pool with %i workers (%s, timeout=%i).",
+                     workers, 'join' if join else 'no join', timeout)
         self.start_time = time.time()
 
         self.worker_count = workers
@@ -62,6 +64,7 @@ class Pool(object):
     def spawn(self, worker, *args, **kwargs):
         logging.debug("Start spawn.")
         self.resource.acquire()
+        logging.debug("Acquired resource.")
 
         worker_thread = threading.Thread(
             target=worker,
