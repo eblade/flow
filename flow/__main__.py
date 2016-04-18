@@ -2,6 +2,7 @@
 
 import sys
 import os
+import time
 import ConfigParser
 from argparse import ArgumentParser
 
@@ -18,31 +19,41 @@ from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 from .store import Store
 
 
-def get_stomp(username, password, args):
+def get_stomp(username, password, app_name, heartbeat_interval, heartbeat_timeout, heartbeats):
     if hasattr(get_stomp, 'cached'):
         return get_stomp.cached
 
     get_stomp.cached = ConnectionManager(
-        "flow_%s" % args.instance_name,
+        "flow_%s" % app_name,
         username=username,
         password=password,
-        heartbeat_interval=args.stomp_heartbeat_interval
-            if not args.stomp_disable_heartbeats else None,
-        heartbeat_timeout=args.stomp_heartbeat_timeout
-            if not args.stomp_disable_heartbeats else None,
+        heartbeat_interval=heartbeat_interval
+            if heartbeats else None,
+        heartbeat_timeout=heartbeat_timeout
+            if heartbeats else None,
     )
+
+    logging.log("Stomp settings", {
+        '(from Flow section) app name': app_name,
+        'heartbeats': heartbeats,
+        'heartbeat Interval': heartbeat_interval,
+        'heartbeat Timeout': heartbeat_timeout,
+    }, 'pp')
 
     return get_stomp.cached
 
 
-def equip(username, password, args, client, config, klass, obj):
+def equip(app_name, username, password, args, client, config, klass, obj):
     if issubclass(klass, NeedsStomp):
-        stomp = get_stomp(username, password, args)
+        stomp = get_stomp(username, password, app_name, 
+                config.getfloat('Stomp', 'heartbeat interval'),
+                config.getfloat('Stomp', 'heartbeat timeout'),
+                config.getboolean('Stomp', 'heartbeats'))
         obj.set_stomp(stomp)
     if issubclass(klass, NeedsClient):
         obj.set_client(client)
     if issubclass(klass, NeedsStore):
-        obj.set_store(Store("flow_" + args.instance_name, client))
+        obj.set_store(Store("flow_" + app_name, client))
     if issubclass(klass, NeedsConfig):
         obj.configure(config)
 
@@ -95,6 +106,11 @@ if __name__ == '__main__':
     config.set('Viz One', 'pem file', '')
     config.set('Viz One', 'time out', '60')
 
+    config.add_section('Stomp')
+    config.set('Stomp', 'heartbeats', 'yes')
+    config.set('Stomp', 'heartbeat interval', '5')
+    config.set('Stomp', 'heartbeat timeout', '10')
+
     config.read(args.profile)
 
     stomp = None
@@ -103,7 +119,7 @@ if __name__ == '__main__':
     os.chdir(working_dir)
     sys.path.append(working_dir)
     Flow = to_class(config.get('Flow', 'class'))
-    app_name = config.get('Flow', 'app name')
+    app_name = args.instance_name or config.get('Flow', 'app name')
     workers = args.workers or config.getint('Flow', 'workers')
     workers = max(workers, 1)
 
@@ -140,11 +156,11 @@ if __name__ == '__main__':
     logging.get_default_logger().debug = args.debug or logging_debug
 
     logging.log("Flow settings", {
-        'Application name': app_name,
-        'Main class': Flow.__name__,
-        'Workers': workers,
-        'Working directory': working_dir,
-        'Source class': Flow.SOURCE.__name__,
+        'app name': app_name,
+        'class': Flow.__name__,
+        'workers': workers,
+        '(from ini path) Working directory': working_dir,
+        '(from main class SOURCE) source class': Flow.SOURCE.__name__,
     }, 'pp')
 
     # Set up Viz One Client Instance
@@ -153,7 +169,7 @@ if __name__ == '__main__':
     viz_one_username = config.get('Viz One', 'username')
     viz_one_password = config.get('Viz One', 'password')
     viz_one_use_https = config.getboolean('Viz One', 'use https')
-    viz_one_check_certificates = config.get('Viz One', 'check certificates')
+    viz_one_check_certificates = config.getboolean('Viz One', 'check certificates')
     viz_one_pem_file = config.get('Viz One', 'pem file') or None
     viz_one_time_out = config.getfloat('Viz One', 'time out')
 
@@ -173,7 +189,6 @@ if __name__ == '__main__':
             hostname=viz_one_hostname,
             user=viz_one_username,
             password=viz_one_password,
-            instance_name=app_name,
             secure=viz_one_use_https,
             verify=viz_one_check_certificates,
             timeout=viz_one_time_out,
@@ -181,12 +196,11 @@ if __name__ == '__main__':
     else:
         client = None
 
-
     source = Flow.SOURCE(**{k.replace(' ', '_'): v for k, v in config.items('Source')})
-    equip(viz_one_username, viz_one_password, args, client, config, Flow.SOURCE, source)
+    equip(app_name, viz_one_username, viz_one_password, args, client, config, Flow.SOURCE, source)
 
-    flow = Flow(instance_name=args.instance_name)
-    equip(viz_one_username, viz_one_password, args, client, config, Flow, flow)
+    flow = Flow(instance_name=app_name)
+    equip(app_name, viz_one_username, viz_one_password, args, client, config, Flow, flow)
 
     # Run source.run once, which should call the workers' start method once or
     # more. No parallelisation is done here

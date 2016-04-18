@@ -1,6 +1,8 @@
 from lxml import etree
 from datetime import date, time, datetime
 
+import sys
+
 from flow import Flow
 from flow.needs import NeedsStore, NeedsClient, NeedsConfig
 from flow.source import UnmanagedFilesListener
