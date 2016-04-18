@@ -4,9 +4,10 @@ from vizone.resource.unmanaged_file import get_unmanaged_files
 from vizone.payload.media import UnmanagedFileCollection
 
 from ..needs import NeedsClient, NeedsStomp
+from ..base import EventBased
 
 
-class UnmanagedFilesListener(NeedsClient, NeedsStomp):
+class UnmanagedFilesListener(EventBased, NeedsClient, NeedsStomp):
     """
     Source class that listens for UnmanagedFile events for a given location.
 
@@ -18,7 +19,7 @@ class UnmanagedFilesListener(NeedsClient, NeedsStomp):
     To use this with your flow daemon:
 
     from flow import Flow
-    from flow.event import UnmanagedFilesListener
+    from flow.source.location import UnmanagedFilesListener
 
     class MyFlow(Flow):
         SOURCE = UnmanagedFilesListener
