@@ -36,8 +36,8 @@ def get_stomp(username, password, app_name, heartbeat_interval, heartbeat_timeou
     logging.log("Stomp settings", {
         '(from Flow section) app name': app_name,
         'heartbeats': heartbeats,
-        'heartbeat Interval': heartbeat_interval,
-        'heartbeat Timeout': heartbeat_timeout,
+        'heartbeat interval': heartbeat_interval,
+        'heartbeat timeout': heartbeat_timeout,
     }, 'pp')
 
     return get_stomp.cached
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         'app name': app_name,
         'class': Flow.__name__,
         'workers': workers,
-        '(from ini path) Working directory': working_dir,
+        '(from ini path) working directory': working_dir,
         '(from main class SOURCE) source class': Flow.SOURCE.__name__,
     }, 'pp')
 

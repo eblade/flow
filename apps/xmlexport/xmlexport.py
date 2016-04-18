@@ -8,7 +8,7 @@ class XmlExport(TransferPlugin):
     XML + Media Export Transfer Plugin.
     """
 
-    def start(self, data, **kwargs):
+    def start(self, data, info, **kwargs):
         self.use(data)
 
         if self.asset.describedby_link.metadata is None:

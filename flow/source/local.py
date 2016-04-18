@@ -22,21 +22,19 @@ class STDIN(Once):
     class MyFlow(Flow):
         SOURCE = STDIN
 
-        def start(self, data, **kwargs):
+        def start(self, data, info, **kwargs):
             # data is a vizone.payload.transfer.PluginData if that format is
+            # info will always be an empty dict
             # chosen, else if raw it will be a unicode string
             # other kwargs are not used in this context
             pass
     """
 
     def __init__(self, payload_class=None):
-        self.callback = None
         self.payload_class = to_class(payload_class)
 
     def run(self):
-        data = self.read_plugin_data()
-        if callable(self.callback):
-            self.callback(data)
+        return self.read_plugin_data(), {}
     
     def read_plugin_data(self):
         return self.payload_class(sys.stdin.read())
