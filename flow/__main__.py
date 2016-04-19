@@ -13,8 +13,7 @@ from vizone.net.message_queue import ConnectionManager
 from vizone.classutils import to_class
 
 from .base import Once, Iterable, EventBased
-from .multi import Pool
-from .logging import LogId
+from .multi import Pool, LogId
 from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
 from .store import Store
 
