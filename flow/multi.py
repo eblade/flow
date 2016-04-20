@@ -33,7 +33,7 @@ class Pool(object):
                 logging.debug("Exit joined %s. (%s)", thread.name,
                         "timed out" if thread.is_alive() else "ok")
         total_time = time.time() - self.start_time
-        logging.debug("Ran %i tasks in %f seconds (avg %f seconds per task).",
+        logging.info("Ran %i tasks in %f seconds (avg %f seconds per task).",
                 self.counter, total_time, self.avg_time)
 
     def _next_id(self, control=False):
