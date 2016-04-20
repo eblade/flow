@@ -11,6 +11,6 @@ class StompStub(Flow, NeedsClient):
     SOURCE = GenericStompListener
 
     def start(self, message, info=None, log_id=-1):
+        asset = Item(message)
         with Locked(asset.atomid):
-            asset = Item(message)
             # do things with asset here
