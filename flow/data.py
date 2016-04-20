@@ -1,6 +1,7 @@
 from threading import Lock
 from vizone.client import HTTPClientError
 from vizone.payload.dictionary import Dictionary
+from vizone import logging
 
 
 class MultiParser(object):
