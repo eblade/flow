@@ -3,10 +3,11 @@ from vizone.opensearch import FeedIterator
 from vizone.resource.asset import get_assets
 from vizone.payload.asset import Item
 
+from ..base import EventBased
 from ..needs import NeedsClient, NeedsStomp
 
 
-class AssetEntryListener(NeedsClient, NeedsStomp):
+class AssetEntryListener(EventBased, NeedsClient, NeedsStomp):
     """
     Source class that listens for Asset Entry events. Make sure to
     have the Asset/Admin permission or it won't work.
@@ -45,4 +46,7 @@ class AssetEntryListener(NeedsClient, NeedsStomp):
 
 def _get_asset_stomp_url(client): 
     assets = get_assets()
-    return assets.monitor_link.href
+    if assets.monitor_link is not None:
+        return assets.monitor_link.href
+    else:
+        raise ValueError("Asset feed has no monitor link. Are you admin?")
