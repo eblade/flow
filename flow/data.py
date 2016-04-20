@@ -27,7 +27,7 @@ class MultiParser(object):
                     self.type)
 
     def convert(self, raw_value, client):
-        if raw_value is None:
+        if raw_value is None or raw_value == "":
             return None
         if self.type == "string":
             return raw_value
