@@ -14,7 +14,7 @@ from vizone.classutils import to_class
 
 from .base import Once, Iterable, EventBased
 from .multi import Pool, LogId
-from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig
+from .needs import NeedsStomp, NeedsClient, NeedsStore, NeedsConfig, NeedsCleanUp
 from .store import Store
 
 
@@ -244,3 +244,12 @@ if __name__ == '__main__':
         raise ValueError(
             "The Source class must inherit one of Once, Iterable or EventBased"
         )
+
+    if issubclass(Flow, NeedsCleanUp):
+        logging.info("Cleaning up flow...")
+        obj.clean_up()
+    elif issubclass(Flow.SOURCE, NeedsCleanUp):
+        logging.info("Cleaning up source...")
+        source.clean_up()
+
+    logging.info("End of program.")

@@ -17,3 +17,8 @@ class NeedsConfig(object):
     def configure(self, config):
         raise NotImplemented("You must implement configure(self, ConfigParser)")
 
+
+class NeedsCleanUp(object):
+    def configure(self, config):
+        raise NotImplemented("You must implement clean_up(self)")
+
