@@ -49,7 +49,7 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     Example ini file for using this importer:
 
         [Flow]
-        class = flow.daemon.xmlimport.XmlImport
+        class = xmlimport.XmlImport
 
         [Source]
         location = xmlimport
