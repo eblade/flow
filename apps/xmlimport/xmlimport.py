@@ -113,7 +113,7 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
         [Vdf]
         form = FORM
         asset.title = FIELD1
-        asset.alternativeTItle = FIELD2
+        asset.alternativeTitle = FIELD2
         # ...
 
     Last is the actual mapping taking place, where you can put the stored data into VDF

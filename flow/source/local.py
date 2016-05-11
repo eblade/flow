@@ -22,7 +22,7 @@ class STDIN(Once):
     .. code-block:: python
 
         from flow import Flow
-        from flow.event.local import STDIN
+        from flow.source.local import STDIN
 
         class MyFlow(Flow):
             SOURCE = STDIN
