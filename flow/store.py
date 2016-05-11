@@ -3,7 +3,43 @@ import json
 
 class Store(object):
     """
-    A Store is a centralizer store based on the Client Config API.
+    A Store is a centralized store based on the Client Config API. Note that:
+
+    - The Client Config API operates per user.
+    - The Client Config API operates per application.
+    - Data can be any JSON serializable object, for instance nested python
+      dicts, lists, strings, ints, floats and booleans.
+
+    Usage example:
+
+    .. code-block:: python
+
+        from flow import Flow
+        from flow.needs import NeedsStore, NeedsClient
+        from flow.source import UnmanagedFilesListener
+
+        class MyFlow(Flow, NeedsStore):
+            \"""
+            MyFlow uses a Store.
+            \"""
+            source = UnmanagedFilesListener
+
+            def start(self, f, info=None, log_id=-1):
+
+                # If your Flow class inherits NeedsStore, it will be equipped with
+                # an ``self.store`` attribute which can be used to get, update and
+                # delete stored data on the server.
+                stored_info = self.store.get('key')
+                if stored_info is None:
+                    # there was nothing there
+                
+                self.store.put('key', {
+                    'any': 'json',
+                    'serializable': ['structure', 'goes', 'here']
+                })
+
+                # You can also delete
+                self.store.delete('key')
     """
     def __init__(self, appname, client):
         """

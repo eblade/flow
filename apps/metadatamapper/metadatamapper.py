@@ -16,14 +16,17 @@ class MetadataMapper(Flow, NeedsClient, NeedsStore, NeedsConfig):
 
     Example ini file:
         
-        [Flow] 
+    .. code-block:: ini
+
+        [Flow]
         class = metadatamapper.MetadataMapper
 
         [Source]
         # AssetEntryListener has no configurable parameters
 
         [MetadataMapper]
-        max retries = 10 # Number of retries in case of etag conflicts
+        # Number of retries in case of etag conflicts
+        max retries = 10
 
         [Mappings]
         asset.alternateTitle = metadata.get('asset.title') + ' alternative'

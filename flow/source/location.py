@@ -13,22 +13,27 @@ class UnmanagedFilesListener(EventBased, NeedsClient, NeedsStomp):
 
     Options given under [Source]:
 
+    .. code-block:: ini
+
+        [Source]
         location = <handle of an import storage>
         skip empty files = <yes/no>
 
     To use this with your flow daemon:
 
-    from flow import Flow
-    from flow.source.location import UnmanagedFilesListener
+    .. code-block:: python
 
-    class MyFlow(Flow):
-        SOURCE = UnmanagedFilesListener
+        from flow import Flow
+        from flow.source import UnmanagedFilesListener
 
-        def start(self, f, info=None, log_id=-1):
-            # f is a vizone.payload.media.UnmanagedFile
-            # info contains the header
-            # log_id is a unique number for the process spawned for this event
-            pass
+        class MyFlow(Flow):
+            SOURCE = UnmanagedFilesListener
+
+            def start(self, f, info=None, log_id=-1):
+                # f is a vizone.payload.media.UnmanagedFile
+                # info contains the header
+                # log_id is a unique number for the process spawned for this event
+                pass
     """
     def __init__(self, location=None, skip_empty_files='no'):
         self.location = location

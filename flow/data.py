@@ -5,6 +5,43 @@ from vizone import logging
 
 
 class MultiParser(object):
+    """
+    A value parser that converts various data formats into Python and Viz One
+    entities, including:
+
+    - ``unicode`` (default)
+    - ``int``
+    - ``float``
+    - ``iso8601`` (timestamp)
+    - ``date`` (date with configurable format)
+    - ``time`` (time with configurable format)
+    - ``datetime`` (date + time with configurable format)
+    - ``dictionary`` (dictionary term with given source reference)
+
+    The intended use is for putting the resulting object as value into a
+    VDF Payload. 
+    
+    Example:
+
+    .. code-block:: python
+
+        from flow.data import MultiParser
+
+        mp = MultiParser(type='date', format='%d/%m')
+        result = mp.convert('4/12')
+
+    For a more thourough example using the MultiParser together with configuration,
+    please check out :class:`xmlimport.XmlImport`.
+
+    For more information about date and time parsing syntax, please refer to
+    https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+
+    Args:
+        type (str): ``string|integer|float|iso|date|time|datetime|dictionary``
+        format (str): format string for parseing ``date``, ``time`` and ``datetime``
+        default_timezone (str): default time zone only used fore ``datetime``
+        source (str): url do ``dictionary``, should be an Atom-based feed
+    """
     Types = {"string", "integer", "float", "iso", "date", "time", "datetime", "dictionary"}
     DictionaryCache = {}
     CacheLock = Lock()
@@ -27,6 +64,16 @@ class MultiParser(object):
                     self.type)
 
     def convert(self, raw_value, client):
+        """
+        Perform conversion configured when contructing the object.
+
+        Args:
+            raw_value (unicode): The raw string to parse
+            client (vizone.client.Instance): The HTTP client to use when looking up dictionary terms.
+
+        Returns:
+            object
+        """
         if raw_value is None or raw_value == "":
             return None
         if self.type == "string":

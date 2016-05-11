@@ -29,6 +29,10 @@ class Locked(object):
 
     Usage:
 
+    .. code-block:: python
+
+        from flow.lock import Locked
+    
         with Locked('mystring'):
             # .. do stuff
 

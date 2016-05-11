@@ -8,21 +8,26 @@ class GenericStompListener(EventBased, NeedsStomp):
 
     Options given under [Source]:
 
+    .. code-block:: ini
+
+        [Source]
         stomp url = <full stomp url>
 
     To use this with your flow daemon:
 
-    from flow import Flow
-    from flow.source.stomp import GenericStompListener
+    .. code-block:: python
 
-    class MyFlow(Flow):
-        SOURCE = GenericStompListener
+        from flow import Flow
+        from flow.source import GenericStompListener
 
-        def start(self, message, info=None, log_id=-1):
-            # message is a vizone.net.message_queue.Message
-            # info contains configuration as a hash
-            # log_id is a unique number for the process spawned for this event
-            pass
+        class MyFlow(Flow):
+            SOURCE = GenericStompListener
+
+            def start(self, message, info=None, log_id=-1):
+                # message is a vizone.net.message_queue.Message
+                # info contains configuration as a hash
+                # log_id is a unique number for the process spawned for this event
+                pass
     """
     def __init__(self, stomp_url):
         self.stomp_url = stomp_url

@@ -14,21 +14,26 @@ class AssetEntryListener(EventBased, NeedsClient, NeedsStomp):
 
     Options given under [Source]:
 
-        None
+    .. code-block:: ini
+
+        [Source]
+        # None
 
     To use this with your flow daemon:
 
-    from flow import Flow
-    from flow.event import AssetEntryListener
+    .. code-block:: python
 
-    class MyFlow(Flow):
-        SOURCE = AssetEntryListener
+        from flow import Flow
+        from flow.source import AssetEntryListener
 
-        def start(self, asset, info=None, log_id=-1):
-            # asset is a vizone.payload.asset.Item
-            # info contains the header
-            # log_id is a unique number for the process spawned for this event
-            pass
+        class MyFlow(Flow):
+            SOURCE = AssetEntryListener
+
+            def start(self, asset, info=None, log_id=-1):
+                # asset is a vizone.payload.asset.Item
+                # info contains the header
+                # log_id is a unique number for the process spawned for this event
+                pass
     """
     def __init__(self):
         self.callback = None

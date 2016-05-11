@@ -48,6 +48,8 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
 
     Example ini file for using this importer:
 
+    .. code-block:: ini
+
         [Flow]
         class = xmlimport.XmlImport
 
@@ -57,8 +59,10 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
 
     Note that the "skip empty files" option has the following effect:
 
-        yes: Tail mode
-        no: No tail mode
+    - ``yes`` means Tail mode
+    - ``no`` means No tail mode
+
+    .. code-block:: ini
 
         [Xml]
         format = default|custom
@@ -70,12 +74,16 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     ``custom`` and it will be parsed and mapped according to the following
     rules specified by these sections in the INI:
 
+    .. code-block:: ini
+
         [Namespaces]
         short = http://long/name
-        ...
+        # ...
 
     Namespaces are optional. You will need to specify only the once used in the fields
     you want to parse.
+
+    .. code-block:: ini
 
         [Field:NAME]
         xpath = /path/to/value
@@ -89,6 +97,8 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     of type ``datetime`` support a ``default timezone`` argument, which should be parsable
     by python; for instance ``Europe/Stockholm`` or ``GMT``.
 
+    .. code-block:: ini
+
         [Transform]
         NAME = EXPR
         compound_field = field1 + ':' + field2
@@ -98,11 +108,13 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
     python expression using the names from ``Field`` directives and previous ``Transform``
     operations. They will be carried out in the order they are written.
 
+    .. code-block:: ini
+
         [Vdf]
         form = FORM
         asset.title = FIELD1
         asset.alternativeTItle = FIELD2
-        ...
+        # ...
 
     Last is the actual mapping taking place, where you can put the stored data into VDF
     fields. Remember to specify the form here. The current revision is always used, you
