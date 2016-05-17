@@ -11,7 +11,7 @@
             font-size: 12pt;
         }
 
-        .editor_container {
+        div.actor_outer_container {
             position: absolute;
             padding-top: 2pt;
             padding-left: 2pt;
@@ -21,7 +21,7 @@
             background-color: gray;
         }
 
-        div.editor {
+        div.actor_inner_container {
             margin: 0;
             position: absolute;
             top: 18pt;
@@ -35,6 +35,47 @@
             width: 100%;
             height: 100%;
         }
+
+        div.input {
+            font-size: 8pt;
+            position: absolute;
+            left: -50pt;
+            width: 44pt;
+            overflow: hidden;
+            white-space: -moz-pre; /* Firefox */
+            white-space: -o-pre; /* Opera */
+            white-space: pre; /* Chrome */
+            word-wrap: pre; /* IE */
+            text-align: right;
+            padding: 2pt;
+            color: darkgreen;
+            border: 2px solid gray;
+            background-color: white;
+        }
+
+        div.output {
+            font-size: 8pt;
+            position: absolute;
+            right: -49pt;
+            width: 44pt;
+            overflow: hidden;
+            white-space: -moz-pre; /* Firefox */
+            white-space: -o-pre; /* Opera */
+            white-space: pre; /* Chrome */
+            word-wrap: pre; /* IE */
+            text-align: left;
+            padding: 2pt;
+            color: darkred;
+            border: 2px solid gray;
+            background-color: white;
+        }
+
+        form > label, input {
+            display: block;
+            padding: 2pt;
+            margin: 4pt;
+        }
+
     </style>
     <script src="http://egneblad.se/js/jquery.min.js" type="text/javascript" charset="utf-8"></script>
     <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
@@ -43,6 +84,7 @@
     <script>
         $(function() {
             var actors = Object();
+            var selected_actor = undefined;
 
             var getNewActorName = function(suggestion) {
                 var attempt = suggestion;
@@ -61,28 +103,170 @@
                 this.y = params.y || 0;
                 this.width = params.width || 300;
                 this.height = params.height || 300;
+                this.inputs = params.inputs || Object();
+                this.outputs = params.outputs || Object();
+                this.content = '';
             };
 
             Actor.prototype.buildWidget = function() {
-                if (this.type === 'python') {
-                    this.container_name = this.name + '_container';
-                    var container = $('<div id="' + this.container_name 
-                                  + '" class="editor_container">' + this.name
-                                  + '<div class="editor">'
-                                  + '<pre id="' + this.name + '" class="editor">text</pre></div></div>');
-                    $('body').append(container);
-                    container.draggable().resizable();
+                this.container_name = this.name + '_container';
+                this.title_container_name = this.name + '_title_container';
+                this.input_container_name = this.name + '_input_container';
+                this.output_container_name = this.name + '_output_container';
+                this.inner_container_name = this.name + '_inner_container';
+                settings_button_name = this.name + '_settings_button';
+                var container = $('<div id="' + this.container_name 
+                              + '" class="actor_outer_container">' 
+                              + '<span id="' + settings_button_name + '">...</span> '
+                              + '<span id="' + this.title_container_name 
+                              + '" class="handle">' + this.name + '</span>'
+                              + '<div id="' + this.input_container_name
+                              + '" class="actor_input_container">'
+                              + '</div>'
+                              + '<div id="' + this.output_container_name
+                              + '" class="actor_output_container">'
+                              + '</div>'
+                              + '<div id="' + this.inner_container_name
+                              + '" class="actor_inner_container">'
+                              + '</div></div>');
+                $('body').append(container);
+                container
+                    .draggable({
+                        handle: '.handle',
+                    })
+                    .resizable();
 
+                if (this.type === 'python') {
+                    $('#' + this.inner_container_name).append(
+                            $('<pre id="' + this.name + '" class="editor"></pre>')
+                    );
                     var editor = ace.edit(this.name);
                     editor.setTheme("ace/theme/github");
                     //editor.setKeyboardHandler("ace/keyboard/vim");
                     editor.session.setMode("ace/mode/python");
+                    editor.renderer.setShowGutter(false);
+                    editor.setValue(this.content);
 
                     container.css('top', this.x + 'pt');
                     container.css('left', this.y + 'pt');
                     container.css('width', this.width + 'pt');
                     container.css('height', this.height + 'pt');
+
+                    var that = this;
+                    $('#' + settings_button_name)
+                        .on('click', function() {
+                            pythonSettingsToDialog(that);
+                            $('#dialog_python_settings')
+                                .dialog('open');
+                        });
                 }
+
+            };
+
+            Actor.prototype.setName = function(name) {
+                this.name = name;
+                $('#' + this.title_container_name).html(name);
+            };
+
+            Actor.prototype.getInputsAsString = function() {
+                return $.map(this.inputs, function(x) {
+                    return x.name;
+                });
+            };
+
+            Actor.prototype.setInputsFromString = function(inputs_string) {
+                var result = Object();
+                var that = this;
+                $.each(
+                    $.map(inputs_string.split(','), $.trim),
+                    function (index, name) {
+                        if (name == '') {
+                            // do nothing
+                        } else if (that.inputs[name] !== undefined) {            
+                            result[name] = that.inputs[name];
+                        } else {
+                            result[name] = new Input({
+                                name: name,
+                            });
+                        }
+                    }
+                );
+                this.inputs = result;
+                this.rebuildInputs();
+            };
+
+            Actor.prototype.rebuildInputs = function() {
+                var input_container = $('#' + this.input_container_name);
+                input_container.html('');
+
+                var position = 20;
+                $.each(this.inputs, function(name, input) {
+                    input.buildWidget(this, input_container, position);
+                    position += 20;
+                });
+            };
+
+            Actor.prototype.getOutputsAsString = function() {
+                return $.map(this.outputs, function(x) {
+                    return x.name;
+                });
+            };
+
+            Actor.prototype.setOutputsFromString = function(outputs_string) {
+                var result = Object();
+                var that = this;
+                $.each(
+                    $.map(outputs_string.split(','), $.trim),
+                    function (index, name) {
+                        if (name == '') {
+                            // do nothing
+                        } else if (that.outputs[name] !== undefined) {            
+                            result[name] = that.outputs[name];
+                        } else {
+                            result[name] = new Output({
+                                name: name,
+                            });
+                        }
+                    }
+                );
+                this.outputs = result;
+                this.rebuildOutputs();
+            };
+
+            Actor.prototype.rebuildOutputs = function() {
+                var output_container = $('#' + this.output_container_name);
+                output_container.html('');
+
+                var position = 20;
+                $.each(this.outputs, function(name, output) {
+                    output.buildWidget(this, output_container, position);
+                    position += 20;
+                });
+            };
+
+            var Input = function(params) {
+                this.name = params.name;
+            };
+
+            Input.prototype.buildWidget = function(actor, parent, position) {
+                this.container_name = actor.container_name + '_input_' + this.name;
+                var container = $('<div id="' + this.container_name + '" class="input">'
+                              + this.name + ' &gt;</div>');
+                parent.append(container);
+                container.css('top', position + 'pt');
+            };
+
+            var Output = function(params) {
+                this.name = params.name;
+                this.position = params.position || 20;
+            };
+
+            Output.prototype.buildWidget = function(actor, parent, position) {
+                this.container_name = actor.container_name + '_output_' + this.name;
+                var container = $('<div id="' + this.container_name 
+                              + '" class="output">&gt; ' + this.name + '</div>');
+                parent.append(container);
+                container.css('top', position + 'pt');
             };
 
             var create_python_actor = function() {
@@ -111,12 +295,63 @@
                 .click(function() {
                     create_source_actor();
                 });
+
+            var pythonSettingsToDialog = function(actor) {
+                selected_actor = actor;
+
+                $('#python_settings_name').val(actor.name);
+                $('#python_settings_inputs').val(actor.getInputsAsString());
+                $('#python_settings_outputs').val(actor.getOutputsAsString());
+            };
+
+            var pythonSettingsFromDialog = function() {
+                if (selected_actor !== undefined) {
+                    selected_actor.setName($('#python_settings_name').val());
+                    selected_actor.setInputsFromString($('#python_settings_inputs').val());
+                    selected_actor.setOutputsFromString($('#python_settings_outputs').val());
+
+                    selected_actor = undefined;
+                }
+                $('#dialog_python_settings')
+                    .dialog('close');
+            };
+
+            $('#dialog_python_settings')
+                .dialog({
+                    autoOpen: false,
+                    height: 300,
+                    width: 350,
+                    modal: true,
+                    buttons: {
+                        OK: pythonSettingsFromDialog,
+                    },
+                })
+                .find('form')
+                .on('submit', function(event) {
+                    event.preventDefault();
+                    pythonSettingsFromDialog();
+                });
         });
     </script>
 </head>
 <body>
     <button id="create_python_actor">Create Python Actor</button>
     <button id="create_source_actor">Create Source Actor</button>
+
+    <div id="dialog_python_settings" title="Python Settings">
+        <form>
+            <fieldset>
+                <label for="name">Name</label>
+                <input type="text" name="name" id="python_settings_name">
+                <label for="inputs">Inputs (comma-separated)</label>
+                <input type="text" name="inputs" id="python_settings_inputs">
+                <label for="outputs">Outputs (comma-separated)</label>
+                <input type="text" name="outputs" id="python_settings_outputs">
+
+                <input type="submit" tabindex="-1" style="position:absolute; top:-1000px"/>
+            </fieldset>
+        </form>
+    </div>
 </body>
 </html>
 
