@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Editor</title>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <style type="text/css" media="screen">
+        body {
+            font-family: sans, arial;
+            font-size: 12pt;
+        }
+
+        .editor_container {
+            position: absolute;
+            padding-top: 2pt;
+            padding-left: 2pt;
+            padding-right: 2pt;
+            padding-bottom: 2pt;
+            color: white;
+            background-color: gray;
+        }
+
+        div.editor {
+            margin: 0;
+            position: absolute;
+            top: 18pt;
+            left: 2pt;
+            bottom: 2pt;
+            right: 2pt;
+        }
+
+        pre.editor {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="http://egneblad.se/js/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script src="http://egneblad.se/js/ace-builds/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="http://egneblad.se/js/ace-builds/src-noconflict/keybinding-vim.js"></script>
+    <script>
+        $(function() {
+            var actors = Object();
+
+            var getNewActorName = function(suggestion) {
+                var attempt = suggestion;
+                var counter = 0;
+                while (actors[attempt] != undefined) {
+                    counter++;
+                    attempt = suggestion + '_' + counter;
+                }
+                return attempt;
+            };
+
+            var Actor = function(params) {
+                this.name = params.name;
+                this.type = params.type;
+                this.x = params.x || 0;
+                this.y = params.y || 0;
+                this.width = params.width || 300;
+                this.height = params.height || 300;
+            };
+
+            Actor.prototype.buildWidget = function() {
+                if (this.type === 'python') {
+                    this.container_name = this.name + '_container';
+                    var container = $('<div id="' + this.container_name 
+                                  + '" class="editor_container">' + this.name
+                                  + '<div class="editor">'
+                                  + '<pre id="' + this.name + '" class="editor">text</pre></div></div>');
+                    $('body').append(container);
+                    container.draggable().resizable();
+
+                    var editor = ace.edit(this.name);
+                    editor.setTheme("ace/theme/github");
+                    //editor.setKeyboardHandler("ace/keyboard/vim");
+                    editor.session.setMode("ace/mode/python");
+
+                    container.css('top', this.x + 'pt');
+                    container.css('left', this.y + 'pt');
+                    container.css('width', this.width + 'pt');
+                    container.css('height', this.height + 'pt');
+                }
+            };
+
+            var create_python_actor = function() {
+                var name = getNewActorName('python');
+                var actor = new Actor({
+                    name: name,
+                    type: 'python',
+                    x: 100,
+                    y: 100,
+                    width: 300,
+                    height: 300,
+                });
+
+                actors[name] = actor;
+                actor.buildWidget();
+            };
+
+            $('#create_python_actor')
+                .button()
+                .click(function() {
+                    create_python_actor();
+                });
+
+            $('#create_source_actor')
+                .button()
+                .click(function() {
+                    create_source_actor();
+                });
+        });
+    </script>
+</head>
+<body>
+    <button id="create_python_actor">Create Python Actor</button>
+    <button id="create_source_actor">Create Source Actor</button>
+</body>
+</html>
+
