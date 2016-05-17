@@ -6,12 +6,12 @@ class NeedsClient(object):
 class NeedsStomp(object):
     def set_stomp(self, stomp):
         self.stomp = stomp
-    
+
 
 class NeedsStore(object):
     def set_store(self, store):
         self.store = store
-    
+
 
 class NeedsConfig(object):
     def configure(self, config):
@@ -19,6 +19,5 @@ class NeedsConfig(object):
 
 
 class NeedsCleanUp(object):
-    def configure(self, config):
+    def clean_up(self, config):
         raise NotImplemented("You must implement clean_up(self)")
-

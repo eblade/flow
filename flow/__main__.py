@@ -44,7 +44,7 @@ def get_stomp(username, password, app_name, heartbeat_interval, heartbeat_timeou
 
 def equip(app_name, username, password, args, client, config, klass, obj):
     if issubclass(klass, NeedsStomp):
-        stomp = get_stomp(username, password, app_name, 
+        stomp = get_stomp(username, password, app_name,
                 config.getfloat('Stomp', 'heartbeat interval'),
                 config.getfloat('Stomp', 'heartbeat timeout'),
                 config.getboolean('Stomp', 'heartbeats'))
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     config = ConfigParser.ConfigParser()
-    
+
     # Default config
     config.add_section('Flow')
     config.set('Flow', 'app name', 'default')
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     }, 'pp')
 
     # Set up Viz One Client Instance
-    viz_one_enabled = config.getboolean('Viz One', 'enabled') or 'yes'
+    viz_one_enabled = config.getboolean('Viz One', 'enabled')
     viz_one_hostname = config.get('Viz One', 'hostname')
     viz_one_username = config.get('Viz One', 'username')
     viz_one_password = config.get('Viz One', 'password')
@@ -224,7 +224,7 @@ if __name__ == '__main__':
             logging.info("Source is out of data.")
 
     # Run source.run once and go to an idle loop. Source is typically an
-    # event listener of some kind and will call the callback upon 
+    # event listener of some kind and will call the callback upon
     # external triggers.
     elif issubclass(Flow.SOURCE, EventBased):
         with Pool(workers=workers, join=True) as pool:
