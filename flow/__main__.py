@@ -169,7 +169,7 @@ if __name__ == '__main__':
     viz_one_password = config.get('Viz One', 'password')
     viz_one_use_https = config.getboolean('Viz One', 'use https')
     viz_one_check_certificates = config.getboolean('Viz One', 'check certificates')
-    viz_one_pem_file = config.get('Viz One', 'pem file') or None
+    viz_one_pem_file = os.path.expanduser(os.path.expandvars(config.get('Viz One', 'pem file'))) or None
     viz_one_time_out = config.getfloat('Viz One', 'time out')
 
     logging.log("Viz One Settings", {
@@ -189,7 +189,7 @@ if __name__ == '__main__':
             user=viz_one_username,
             password=viz_one_password,
             secure=viz_one_use_https,
-            verify=viz_one_check_certificates,
+            verify=viz_one_pem_file or viz_one_check_certificates,
             timeout=viz_one_time_out,
         )
     else:

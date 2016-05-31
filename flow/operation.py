@@ -1,3 +1,5 @@
+import functools
+
 from vizone import logging
 from vizone.client import get_default_instance
 from vizone.client import HTTPServerError, HTTPClientError
@@ -6,6 +8,67 @@ from vizone.payload.asset import Item
 from vizone.payload.common import AtomCategory
 from vizone.payload.metadata import MetadataFormCollection
 from vizone.vdf import Model
+
+
+class Retry(Exception):
+    """
+    Exception that can be raised within a retry_on_conflict context to
+    retry prematurely.
+    """
+    pass
+
+
+def retry_on_conflict(max_retries=3):
+    """
+    Decorator that can wrap a function or method and retry it upon
+    a conflict exception.
+
+    Example:
+
+    .. code:: python
+        
+        @retry_on_conflict(max_retries=3)
+        def my_function(self, entry):
+            # ...
+            # client.PUT(entry.edit_link, entry)
+
+    Note that:
+    
+    - Any argument will be reused as it, with changes.
+
+    - You can raise a Retry exception to retry for other reasons than
+      a 409 Conflict.
+    """
+    class RetryOnConflict(object):
+        def __init__(self, func):
+            self.func = func
+        
+        def __call__(self, *args, **kwargs):
+            for retry in range(max_retries):
+                try:
+                    logging.debug(u'Updating (attempt %i of %i)...',
+                                 retry + 1, max_retries)
+
+                    return (self.func)(*args, **kwargs)
+
+                # If we have a conflict, retry the entire operation
+                except HTTPClientError as e:
+                    logging.warn(u'Update failed %s', str(e))
+                    if e.response.status_code == 409: # etag violation
+                        logging.warn(u'Retrying...')
+                    else:
+                        break
+
+                except Retry as e:
+                    logging.warn(u'Retrying...')
+
+        def __repr__(self):
+            return self.func.__doc__
+
+        def __get__(self, obj, objtype):
+            return functools.partial(self.__call__, obj)
+
+    return RetryOnConflict
 
 
 def create_or_update_asset(
