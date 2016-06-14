@@ -25,18 +25,15 @@ class GenericStompListener(EventBased, NeedsStomp):
 
             def start(self, message):
                 # message is a vizone.net.message_queue.Message
-                # info contains configuration as a hash
-                # log_id is a unique number for the process spawned for this event
                 pass
     """
     def __init__(self, stomp_url):
         self.stomp_url = stomp_url
         self.callback = None
-        self.info = {'stomp url': stomp_url}
 
     def run(self):
         self.stomp.register_handler(self.stomp_url, self.process_event)
 
     def process_event(self, event):
         if callable(self.callback):
-            self.callback(event, self.info)
+            self.callback(event)
