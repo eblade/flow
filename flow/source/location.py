@@ -29,10 +29,8 @@ class UnmanagedFilesListener(EventBased, NeedsClient, NeedsStomp):
         class MyFlow(Flow):
             SOURCE = UnmanagedFilesListener
 
-            def start(self, f, info=None, log_id=-1):
+            def start(self, f):
                 # f is a vizone.payload.media.UnmanagedFile
-                # info contains the header
-                # log_id is a unique number for the process spawned for this event
                 pass
     """
     def __init__(self, location=None, skip_empty_files='no'):
@@ -47,14 +45,14 @@ class UnmanagedFilesListener(EventBased, NeedsClient, NeedsStomp):
     def process_file_event(self, event):
         unmanaged_files = UnmanagedFileCollection(event)
         for unmanaged_file in FeedIterator(unmanaged_files, self.client):
-            logging.info('(*) Event for unmanaged file "%s"', unmanaged_file.title)
+            logging.info('Event for unmanaged file "%s"', unmanaged_file.title)
 
             if self.skip_empty_files and unmanaged_file.media.filesize == 0:
-                logging.info('(*) Skipping empty file %s.', unmanaged_file.title)
+                logging.info('Skipping empty file %s.', unmanaged_file.title)
                 return
 
             if callable(self.callback):
-                self.callback(unmanaged_file, event.headers)
+                self.callback(unmanaged_file)
 
 
 def _get_location_stomp_url_by_handle(handle, client): 

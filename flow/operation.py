@@ -46,9 +46,10 @@ def retry_on_conflict(max_retries=3):
         def __call__(self, *args, **kwargs):
             for retry in range(max_retries):
                 try:
-                    logging.debug(u'Updating (attempt %i of %i)...',
+                    logging.debug(u'RetryOnConflict, attempt %i of %i...',
                                  retry + 1, max_retries)
 
+                    kwargs['conflict'] = retry > 0
                     return (self.func)(*args, **kwargs)
 
                 # If we have a conflict, retry the entire operation
@@ -80,8 +81,7 @@ def create_or_update_asset(
         materialtype=None,
         category=None,
         rightscode=None,
-        client=None,
-        log_id=-1):
+        client=None):
     """
     Creates or Updates an Item with a given ``id``. Metadata updates will
     be retried three times if there are conflicts.
@@ -96,7 +96,6 @@ def create_or_update_asset(
         category (Optional[unicode]): Set the Category to this when creating the Asset
         rightscode (Optional[unicode]): Set the Rights Code to this when creating the Asset
         client (Optional[vizone.client.Instance]): A Viz One client to use (None means the default)
-        log_id (Optional[int): Log id to use in log prints
 
     Returns:
         vizone.payload.asset.Item: The updated or created Asset Entry
@@ -110,7 +109,7 @@ def create_or_update_asset(
         old_payload = asset.describedby_link.metadata
     except HTTPClientError:
         try:
-            logging.info(u'(%i) Item %s does not exist, creating.', log_id, id)
+            logging.info(u'Item %s does not exist, creating.', id)
             asset = Item(id=id)
 
             if acl:
@@ -131,7 +130,7 @@ def create_or_update_asset(
 
             asset = create_asset(asset, client=client)
         except (HTTPClientError, HTTPServerError):
-            logging.error(u'(%i) Could not create asset %s, skipping.', log_id, id)
+            logging.error(u'Could not create asset %s, skipping.', id)
             return
     
     # Create payload if metadata is a dict
@@ -151,42 +150,40 @@ def create_or_update_asset(
 
     # Update Metadata if needed
     if payload is not None and payload != old_payload:
-        logging.info(u'(%i) Updating metadata for asset %s.', log_id, asset.id)
+        logging.info(u'Updating metadata for asset %s.', asset.id)
         for _ in range(3):
             try:
                 client.PUT(asset.describedby_link, payload)
                 break
             except HTTPServerError:
-                logging.error(u'(%i) Could not update metadata for asset %s.', log_id, asset.id)
+                logging.error(u'Could not update metadata for asset %s.', asset.id)
                 return
             except HTTPClientError as e:
-                logging.info(u'(%i) Asset Metadata update failed %s', log_id, str(e))
+                logging.info(u'Asset Metadata update failed %s', str(e))
                 if e.responstatus_code == 412:
-                    logging.warn(u'(%i) Retrying...', log_id)
+                    logging.warn(u'Retrying...')
                     asset.parse(client.GET(asset.self_link))
                 else:
                     break
     else:
-        logging.info(u'(%i) Updating metadata for asset %s not needed.', log_id, asset.id)
+        logging.info(u'Updating metadata for asset %s not needed.', asset.id)
 
     return asset
 
 
-def delete_unmanaged_file(unmanaged_file, client=None, log_id=-1):
+def delete_unmanaged_file(unmanaged_file, client=None):
     """
     Delete an Unmanaged File from Viz One
 
     Args:
         unmanaged_file (vizone.payload.media.UnmanagedFile): The Unmanaged File to delete
         client (Optional[vizone.client.Instance]): A Viz One client to use (None means the default)
-        log_id (Optional[int): Log id to use in log prints
     """
-    logging.info(u'(%i) Deleting file %s.',
-                 log_id, unmanaged_file.title)
+    logging.info(u'Deleting file %s.', unmanaged_file.title)
     (client or get_default_instance()).DELETE(unmanaged_file.delete_link)
 
 
-def import_unmanaged_file(asset, uri_list, client=None, log_id=-1):
+def import_unmanaged_file(asset, uri_list, client=None):
     """
     Start an Unmanaged File import to a given Asset Entry
 
@@ -194,17 +191,16 @@ def import_unmanaged_file(asset, uri_list, client=None, log_id=-1):
         asset (vizone.payload.asset.Item): The Asset Entry to import to
         uri_list (vizone.urilist.UriList): A URI List containing the link to the media
         client (Optional[vizone.client.Instance]): A Viz One client to use (None means the default)
-        log_id (Optional[int): Log id to use in log prints
 
     Returns:
         bool: True if successful, False on error
     """
-    logging.info(u'(%i) Importing file %s to %s.',
-                 log_id, uri_list.generate().strip(), asset.id)
+    logging.info(u'Importing file %s to %s.',
+                 uri_list.generate().strip(), asset.id)
     try:
         client.POST(asset.import_unmanaged_link, uri_list)
         return True
     except HTTPClientError:
-        logging.error('(%i) Unable to import unmanaged file "%s" to asset %s',
-                      log_id, uri_list.generate().strip(), asset.id)
+        logging.error('Unable to import unmanaged file "%s" to asset %s',
+                      uri_list.generate().strip(), asset.id)
         return False

@@ -79,6 +79,7 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     config = ConfigParser.ConfigParser()
+    config.optionxform = str  # do not lowercase keys
 
     # Default config
     config.add_section('Flow')
@@ -91,7 +92,7 @@ if __name__ == '__main__':
     config.add_section('Logging')
     config.set('Logging', 'level', 'info')
     config.set('Logging', 'color', 'yes')
-    config.set('Logging', 'logger', 'terminal')
+    config.set('Logging', 'logger', 'flow')
     config.set('Logging', 'formal', 'no')
     config.set('Logging', 'file name', "/tmp/log.txt")
 
@@ -110,21 +111,29 @@ if __name__ == '__main__':
     config.set('Stomp', 'heartbeat interval', '5')
     config.set('Stomp', 'heartbeat timeout', '10')
 
+    # Read profile (ini file)
     config.read(args.profile)
 
+    # Stomp object placeholder
     stomp = None
 
+    # Set up environment
     working_dir = os.path.dirname(os.path.abspath(args.profile))
     os.chdir(working_dir)
     sys.path.append(working_dir)
+
+    # Load application
     Flow = to_class(config.get('Flow', 'class'))
     app_name = args.instance_name or config.get('Flow', 'app name')
-    workers = args.workers or config.getint('Flow', 'workers')
-    workers = max(workers, 1)
 
+    # Show help
     if args.man:
         help(Flow)
         sys.exit(0)
+
+    # Set up multi-threading
+    workers = args.workers or config.getint('Flow', 'workers')
+    workers = max(workers, 1)
 
     # Set up Logging
     logging_debug = config.get('Logging', 'level') == 'debug'
@@ -133,7 +142,16 @@ if __name__ == '__main__':
     logging_formal = config.getboolean('Logging', 'formal')
     logging_file = config.get('Logging', 'file name')
 
-    if logging_logger == 'terminal':
+    if logging_logger == 'flow':
+        from .logging import TerminalLogger
+        logger = TerminalLogger()
+        logger.color = logging_color
+        if logging_formal:
+            logger.color = False
+            logger.formal = True
+        logging.set_logger(logger)
+
+    elif logging_logger == 'terminal':
         from vizone.logging.terminal import TerminalLogger
         logger = TerminalLogger()
         logger.color = logging_color
@@ -204,36 +222,36 @@ if __name__ == '__main__':
     # Run source.run once, which should call the workers' start method once or
     # more. No parallelisation is done here
     if issubclass(Flow.SOURCE, Once):
-        obj, info = source.run()
-        flow.start(obj, info)
+        obj = source.run()
+        flow.start(obj)
 
-    # Run source.run multiple times as long as there are free workers in the
+    # Run source.start multiple times as long as there are free workers in the
     # pool. Stop when source.next() raises StopIteration.
     elif issubclass(Flow.SOURCE, Iterable):
         with Pool(workers=workers, join=True) as pool:
             log_id = LogId()
 
-            for obj, info in source:
+            for obj in source:
                 current_log_id = log_id.next()
-                pool.spawn(flow.run, obj, info=info, log_id=current_log_id)
+                pool.spawn(flow.start, obj, logger=logger, log_id=current_log_id)
                 logging.info(
-                    "(%i) Spawned worker.",
+                    "Spawned worker.",
                     current_log_id
                 )
 
             logging.info("Source is out of data.")
 
-    # Run source.run once and go to an idle loop. Source is typically an
+    # Run source.start once and go to an idle loop. Source is typically an
     # event listener of some kind and will call the callback upon
     # external triggers.
     elif issubclass(Flow.SOURCE, EventBased):
         with Pool(workers=workers, join=True) as pool:
             log_id = LogId()
 
-            def work(obj, info):
+            def work(obj):
                 current_log_id = log_id.next()
-                pool.spawn(flow.start, obj, info=info, log_id=current_log_id)
-                logging.info("(%i) Spawned.", current_log_id)
+                pool.spawn(flow.start, obj, logger=logger, log_id=current_log_id)
+                logging.info("Spawned (%s)." % (str(current_log_id)))
 
             source.callback = work
             source.run()
@@ -245,9 +263,11 @@ if __name__ == '__main__':
             "The Source class must inherit one of Once, Iterable or EventBased"
         )
 
+    # Clean Up
     if issubclass(Flow, NeedsCleanUp):
         logging.info("Cleaning up flow...")
         obj.clean_up()
+
     elif issubclass(Flow.SOURCE, NeedsCleanUp):
         logging.info("Cleaning up source...")
         source.clean_up()

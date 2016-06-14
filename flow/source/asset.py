@@ -29,10 +29,8 @@ class AssetEntryListener(EventBased, NeedsClient, NeedsStomp):
         class MyFlow(Flow):
             SOURCE = AssetEntryListener
 
-            def start(self, asset, info=None, log_id=-1):
+            def start(self, asset):
                 # asset is a vizone.payload.asset.Item
-                # info contains the header
-                # log_id is a unique number for the process spawned for this event
                 pass
     """
     def __init__(self):
@@ -44,9 +42,9 @@ class AssetEntryListener(EventBased, NeedsClient, NeedsStomp):
 
     def process_asset_event(self, event):
         asset = Item(event)
-        logging.info('(*) Event for asset %s "%s"', asset.id, asset.title)
+        logging.info('Event for asset %s "%s"', asset.id, asset.title)
         if callable(self.callback):
-            self.callback(asset, event.headers)
+            self.callback(asset)
 
 
 def _get_asset_stomp_url(client): 

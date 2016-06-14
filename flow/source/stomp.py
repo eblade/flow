@@ -23,7 +23,7 @@ class GenericStompListener(EventBased, NeedsStomp):
         class MyFlow(Flow):
             SOURCE = GenericStompListener
 
-            def start(self, message, info=None, log_id=-1):
+            def start(self, message):
                 # message is a vizone.net.message_queue.Message
                 # info contains configuration as a hash
                 # log_id is a unique number for the process spawned for this event

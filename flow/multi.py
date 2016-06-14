@@ -66,8 +66,23 @@ class Pool(object):
         self.resource.acquire()
         logging.debug("Acquired resource.")
 
+        def with_local_log_id(worker):
+            def wrapped(*args, **kwargs):
+                try:
+                    logger = kwargs.pop('logger')
+                    log_id = kwargs.pop('log_id')
+                    logger.set_log_id(log_id)
+                except KeyError:
+                    pass
+                except AttributeError:
+                    pass
+
+                return worker(*args, **kwargs)
+
+            return wrapped
+        
         worker_thread = threading.Thread(
-            target=worker,
+            target=with_local_log_id(worker),
             name=self._next_id(),
             args=args,
             kwargs=kwargs,

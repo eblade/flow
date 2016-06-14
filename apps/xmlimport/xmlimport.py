@@ -152,14 +152,14 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
         else:
             self.vdf_mappings = {}
 
-    def start(self, f, info=None, log_id=-1):
+    def start(self, f):
         # Queue up multiple events for the same file
         with Locked(f.title):
-            logging.info('(%i) Processing XML file %s.', log_id, f.title)
+            logging.info('Processing XML file %s.', f.title)
 
             if is_xml(f):  # XML file
                 if f.media.filesize == 0:
-                    logging.info('(%i) Skipping empty XML file %s.', log_id, f.title)
+                    logging.info('Skipping empty XML file %s.', f.title)
                     return
 
                 # Extract and translate the metadata from the XML
@@ -175,31 +175,29 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
                 # Custom Xml mode requires some further settings in the INI
                 elif self.xml_format == 'custom':
                     r = self.client.GET(f.media.url)
-                    asset_id, media_filename, metadata = self.custom_parse(f.title, r.content, log_id)
+                    asset_id, media_filename, metadata = self.custom_parse(f.title, r.content)
 
                 # Create or Update a placeholder, including Metadata update from XML
                 asset = create_or_update_asset(
                     id=asset_id,
                     metadata=metadata, # may be a vizone.vdf.Payload or a dict
                     client=self.client,
-                    log_id=log_id,
                 )
 
                 # Remove the XML file, we're done with it
                 delete_unmanaged_file(
                     unmanaged_file=f,
                     client=self.client,
-                    log_id=log_id,
                 )
 
                 # Jump out here if this is not a placeholder
                 if asset.assetmediatype != 'placeholder':
-                    logging.info('(%i) Asset is not a placeholder, skip import.', log_id)
+                    logging.info('(%i) Asset is not a placeholder, skip import.')
                     return
 
                 # Check if a media file waas mentioned in atom:content/@src
                 if media_filename:
-                    logging.info('(%i) Wants media file %s.', log_id, media_filename)
+                    logging.info('Wants media file %s.', media_filename)
 
                     # Check if we have a MIN for it already
                     stored_info = self.store.get(media_filename)
@@ -210,12 +208,11 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
                             asset,
                             UriList([stored_info.get('link')]),
                             client=self.client,
-                            log_id=log_id,
                         )
                         self.store.delete(media_filename)
                     else:
-                        logging.info('(%i) Remember media file %s -> asset %s.',
-                                     log_id, media_filename, asset.id)
+                        logging.info('Remember media file %s -> asset %s.',
+                                     media_filename, asset.id)
                         self.store.put(media_filename,
                                        {'type': 'asset', 'link': asset.self_link.href})
 
@@ -231,16 +228,15 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
                         asset,
                         UriList([f.self_link.href]),
                         client=self.client,
-                        log_id=log_id,
                     )
                     self.store.delete(f.title)
 
                 elif stored_info is None:
-                    logging.info('(%i) Remember media file %s -> unmanaged file %s.',
-                                 log_id, f.title, f.self_link.href)
+                    logging.info('Remember media file %s -> unmanaged file %s.',
+                                 f.title, f.self_link.href)
                     self.store.put(f.title, {'type': 'media', 'link': f.self_link.href})
 
-    def custom_parse(self, filename, xml_string, log_id):
+    def custom_parse(self, filename, xml_string):
         dom = etree.fromstring(xml_string)
 
         # Parsing
@@ -255,21 +251,21 @@ class XmlImport(Flow, NeedsClient, NeedsStore, NeedsConfig):
             except:
                 pass
             data[fieldname] = field.get_value(raw_value, self.client)
-        logging.log("(%i) Data" % log_id, data, 'pp')
+        logging.log("Data", data, 'pp')
 
         # Transforming
         for fieldname, expr in self.transforms:
             data[fieldname] = eval(expr, data)
         if '__builtins__' in data.keys():
             del data['__builtins__']
-        logging.log("(%i) Data Post Transform" % log_id, data, 'pp')
+        logging.log("Data Post Transform", data, 'pp')
 
         # Writing to VDF
         vdf = {}
         for fieldname, expr in self.vdf_mappings.items():
             vdf[fieldname] = eval(expr, data)
 
-        logging.log("(%i) Vdf" % log_id, vdf, 'pp')
+        logging.log("Vdf", vdf, 'pp')
         media_filename = data.get('media_filename')
         asset_id = data.get('asset_id')
         return asset_id, media_filename, vdf

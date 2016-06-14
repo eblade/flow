@@ -8,7 +8,7 @@ class XmlExportFXP(TransferPlugin):
     XML + Media Export Transfer Plugin using FXP.
     """
 
-    def start(self, data, info, **kwargs):
+    def start(self, data):
         # Parse the PluginData
         self.use(data)
 
@@ -52,7 +52,7 @@ class XmlExportArdFTP(TransferPlugin):
     XML + Media Export Transfer Plugin using ArdFTP SITE commands.
     """
 
-    def start(self, data, info, **kwargs):
+    def start(self, data):
         # Parse the PluginData
         self.use(data)
 
