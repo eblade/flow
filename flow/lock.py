@@ -6,21 +6,25 @@ _internal_lock = Lock()
 
 
 def _lock(key):
-    _internal_lock.acquire()
-    lock = _locks.get(key) or Lock()
+    with _internal_lock:
+        lock = _locks.get(key) or Lock()
+
     lock.acquire()
-    if not key in _locks:
-        _locks[key] = lock
-    _internal_lock.release()
+
+    with _internal_lock:
+        if not key in _locks:
+            _locks[key] = lock
 
 
 def _unlock(key):
-    _internal_lock.acquire()
-    lock = _locks.get(key) or Lock()
+    with _internal_lock:
+        lock = _locks.get(key) or Lock()
+
     lock.release()
-    if key in _locks:
-        del _locks[key]
-    _internal_lock.release()
+
+    with _internal_lock:
+        if key in _locks:
+            del _locks[key]
 
 
 class Locked(object):
