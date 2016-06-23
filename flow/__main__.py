@@ -234,10 +234,7 @@ if __name__ == '__main__':
             for obj in source:
                 current_log_id = log_id.next()
                 pool.spawn(flow.start, obj, logger=logger, log_id=current_log_id)
-                logging.info(
-                    "Spawned worker.",
-                    current_log_id
-                )
+                logging.info("Spawned worker (%s).", str(current_log_id))
 
             logging.info("Source is out of data.")
 
