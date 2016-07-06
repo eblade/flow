@@ -35,3 +35,9 @@ STDIN
 
 .. autoclass:: flow.source.local.STDIN
    :members:
+
+Interval
+--------
+
+.. autoclass:: flow.source.interval.Interval
+   :members:
