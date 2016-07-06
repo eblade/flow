@@ -26,7 +26,7 @@ class XmlExportFXP(TransferPlugin):
         # Set up an FXP transfer (what is FXP? see
         # https://en.wikipedia.org/wiki/File_eXchange_Protocol)
         fxp = FXP(self.source, self.destination, debug=True)
-        loggin.info("FXP copying...")
+        logging.info("FXP copying...")
         fxp.run()
         fxp.quit()
         logging.log("FXP done", None, 'ok')
@@ -41,7 +41,7 @@ class XmlExportFXP(TransferPlugin):
 
         # Write the Asset Metadata to the xml destination path
         ftp_write(xml_destination, asset.describedby_link.metadata.generate())
-        loggin.log("Metadata done", None, 'ok')
+        logging.log("Metadata done", None, 'ok')
 
         # Set the progress to 100% and we're done
         self.update_progress(100)
@@ -95,12 +95,12 @@ class XmlExportArdFTP(TransferPlugin):
 
         # Construct a xml destiniation path
         xml_destination = self.destination + ".xml"
-        loggin.info("XML Destination:   %s", xml_destination)
-        loggin.info("Writing metadata...")
+        logging.info("XML Destination:   %s", xml_destination)
+        logging.info("Writing metadata...")
 
         # Write the Asset Metadata to the xml destination path
         ftp_write(xml_destination, asset.describedby_link.metadata.generate())
-        loggin.log("Metadata writing done", None, 'ok')
+        logging.log("Metadata writing done", None, 'ok')
 
         # Set the progress to 100% and we're done
         self.update_progress(100)
