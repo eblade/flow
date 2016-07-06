@@ -7,7 +7,6 @@ import ConfigParser
 from argparse import ArgumentParser
 
 from vizone import logging
-from vizone.tool import Tool
 from vizone.client import init
 from vizone.net.message_queue import ConnectionManager
 from vizone.classutils import to_class
