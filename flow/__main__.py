@@ -181,9 +181,9 @@ if __name__ == '__main__':
 
     # Set up Viz One Client Instance
     viz_one_enabled = config.getboolean('Viz One', 'enabled')
-    viz_one_hostname = config.get('Viz One', 'hostname')
-    viz_one_username = config.get('Viz One', 'username')
-    viz_one_password = config.get('Viz One', 'password')
+    viz_one_hostname = os.path.expandvars(config.get('Viz One', 'hostname'))
+    viz_one_username = os.path.expandvars(config.get('Viz One', 'username'))
+    viz_one_password = os.path.expandvars(config.get('Viz One', 'password'))
     viz_one_use_https = config.getboolean('Viz One', 'use https')
     viz_one_check_certificates = config.getboolean('Viz One', 'check certificates')
     viz_one_pem_file = os.path.expanduser(os.path.expandvars(config.get('Viz One', 'pem file'))) or None
