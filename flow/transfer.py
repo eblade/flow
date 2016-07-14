@@ -14,9 +14,10 @@ class TransferPlugin(Flow, NeedsClient):
     .. code-block:: python
 
         from flow.transfer import TransferPlugin
+        from vizone import logging
 
         class MyTransferPlugin(TransferPlugin):
-            def __init__(self, plugin_data):
+            def start(self, plugin_data):
                 self.use(plugin_data)
 
                 self.update_progress(0)

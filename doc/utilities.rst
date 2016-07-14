@@ -61,9 +61,9 @@ create a new folder and add a file named ``plugin`` to it, with these contents:
 .. code-block:: yaml
 
     type: runnable
-    package: plugin
+    package: myplugin
     depends: python-one
-    methods: plugin
+    methods: myplugin
     mode: filecopy
     title: My Plugin
     author: Vizrt
@@ -84,7 +84,7 @@ You can now basically use ``pluginmgr make`` interactively until you get it righ
     vim plugin
     pluginmgr make
 
-    # vdf: vdf model at ~/myplugin/etc/xfer-plugin-plugin.vdf
+    # vdf: vdf model at ~/myplugin/etc/xfer-plugin-myplugin.vdf
     # required but missing at /opt/ardome/bin/pluginmgr line 847.
 
 So, you need a VDF. This is for holding the settings of your plugin in a way
@@ -95,7 +95,7 @@ vdf`` to create one:
 
     pluginmgr vdf plugin.user:Username:user …
         plugin.password:Password:user …
-        > etc/xfer-plugin-plugin.vdf
+        > etc/xfer-plugin-myplugin.vdf
 
 Now try ``pluginmgr make`` again:
 
@@ -103,18 +103,18 @@ Now try ``pluginmgr make`` again:
 
     pluginmgr make
 
-    # Could not find the specified bin/plugin in source tree
+    # Could not find the specified bin/myplugin in source tree
 
 So there is no plugin executable to run. For flow this will be a script, named
-``bin/plugin`` (where ``plugin`` would be what you specified as ``method``
-above) create a folder ``bin`` and put a file ``plugin`` with this in it:
+``bin/myplugin`` (where ``myplugin`` would be what you specified as ``method``
+above) create a folder ``bin`` and put a file ``myplugin`` with this in it:
 
 .. code-block:: bash
 
     #!/bin/bash
 
     /opt/python-one/bin/wrap_python -m flow …
-        /opt/python-one/apps/myplugin/plugin.ini -g
+        /opt/ardome/apps/myplugin/myplugin.ini -g
 
 Note that the path might need to be adjusted later, but this is a decent
 convention. Now try ``pluginmgr make`` again:
@@ -127,10 +127,10 @@ convention. Now try ``pluginmgr make`` again:
     # INFO: Edit files as necessary. Then run the following command to …
     #     build the apa-package:
     # INFO:
-    # INFO:   $ apa dist xfer-plugin-plugin/1.0
+    # INFO:   $ apa dist xfer-plugin-myplugin/1.0
     # INFO:
     # INFO: To install:
-    # INFO:   # scamp install -i [version] xfer-plugin-plugin--1.0.apa
+    # INFO:   # scamp install -i [version] xfer-plugin-myplugin--1.0.apa
     # INFO:   # scamp apply
     # INFO:   $ ardemctl restart xfer
     # INFO:
@@ -143,17 +143,18 @@ create the actual app as well:
 .. code-block:: bash
 
     mkdir -p apps/myplugin
-    vim apps/myplugin/plugin.py
-    vim apps/myplugin/plugin.ini
+    vim apps/myplugin/myplugin.py
+    vim apps/myplugin/myplugin.ini
 
-Good starting point for the ``plugin.py`` file:
+Good starting point for the ``myplugin.py`` file:
 
 .. code-block:: python
 
     from flow.transfer import TransferPlugin
+    from vizone import logging
 
     class MyPlugin(TransferPlugin):
-        def __init__(self, plugin_data):
+        def start(self, plugin_data):
             self.use(plugin_data)
 
             self.update_progress(0)
@@ -164,13 +165,13 @@ Good starting point for the ``plugin.py`` file:
 
             self.update_progress(100)
 
-And for the ``plugin.ini`` file:
+And for the ``myplugin.ini`` file:
 
 .. code-block:: ini
 
    [Flow]
    app name = myplugin
-   class = plugin.MyPlugin
+   class = myplugin.MyPlugin
 
    [Source]
    payload class = vizone.payload.transfer.PluginData
@@ -180,29 +181,29 @@ And for the ``plugin.ini`` file:
 
 
 Now these files needs to be part of the APA package. To achieve this, edit the
-file ``build/xfer-plugin-plugin/FILES`` (the first line is new):
+file ``build/xfer-plugin-myplugin/FILES`` (the first line is new):
 
-.. code-block:: ini
+.. code-block:: text
 
     apps/myplugin/* -> apps/myplugin
 
     @ chmod 755
-    bin/plugin -> xferplugin/bin/plugin
+    bin/myplugin -> xferplugin/bin/myplugin
     @ nochmod
 
     @ nochmod
     @ chmod 644
-    etc/xfer-plugin-plugin.xml -> xferplugin/etc/xfer-plugin-plugin.xml
+    etc/xfer-plugin-myplugin.xml -> xferplugin/etc/xfer-plugin-myplugin.xml
 
     @ nochmod
     @ chmod 644
-    etc/xfer-plugin-plugin.vdf -> xferplugin/etc/xfer-plugin-plugin.vdf
+    etc/xfer-plugin-myplugin.vdf -> xferplugin/etc/xfer-plugin-myplugin.vdf
 
     @ nochmod
 
 After changing this, **do not run ``pluginmgr make`` again**, as this will
 overwrite the files in ``build/``. You can actually delete the ``plugin`` file
-now and edit ``etc/xfer-plugin-plugin.xml`` if you want to change any plugin
+now and edit ``etc/xfer-plugin-myplugin.xml`` if you want to change any plugin
 settings.
 
 
@@ -210,11 +211,11 @@ Creating and Installing a Package
 ---------------------------------
 
 To build an APA package of your plugin, you can use the command given by
-``pluginmgr make`` previously.
+``pluginmgr make`` previously. Remember: don't run it again now!
 
 .. code-block:: bash
 
-    apa dist xfer-plugin-plugin/1.0
+    apa dist xfer-plugin-myplugin/1.0
 
 .. note::
 
@@ -227,7 +228,7 @@ daemons:
 
 .. code-block:: bash
 
-    sudo /opt/scamp/bin/scamp install xfer-plugin-plugin--1.0.apa
+    sudo /opt/scamp/bin/scamp install xfer-plugin-myplugin--1.0.apa
     sudo /opt/scamp/bin/scamp apply
     ardemctl restart xfer
 
@@ -260,7 +261,8 @@ one:
         destination-storage:
           - plugin-export
       apply:
-        method: plugin
+        destination-step-method: myplugin
+
 
 Miscellaneous
 =============
