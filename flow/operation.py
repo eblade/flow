@@ -25,18 +25,23 @@ def retry_on_conflict(max_retries=3):
 
     Example:
 
-    .. code:: python
+    .. code-block:: python
         
         @retry_on_conflict(max_retries=3)
-        def my_function(self, entry):
-            # ...
-            # client.PUT(entry.edit_link, entry)
+        def my_function(self, entry, conflict=False):
+
+            # If there was a conflict, the entry needs to be refetched
+            if conflict:
+                entry.parse(self.client.GET(entry.self_link))
+
+            # Do the operations
+            self.client.PUT(entry.edit_link, entry)
 
     Note that:
     
     - Any argument will be reused as it, with changes.
 
-    - You can raise a Retry exception to retry for other reasons than
+    - You can raise a ``Retry`` exception to retry for other reasons than
       a 409 Conflict.
     """
     class RetryOnConflict(object):
