@@ -12,11 +12,16 @@ class Interval(EventBased):
 
     Options given under [Source]:
 
+    .. code-block:: ini
+
+        [Source]
         interval = 60 (seconds)
         window start = 01:00 [HH[:MM[:SS]]]
         window end = 03:00 [HH[:MM[:SS]]]
 
     To use this with your flow daemon:
+
+    .. code-block:: python
 
         from flow import Flow
         from flow.source import Interval
