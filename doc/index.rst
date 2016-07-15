@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to flow's documentation!
-================================
+Python One/Flow
+===============
+
+Flow is a business layer build upon Python One to use for building daemons,
+transfer plugins and batch jobs for Viz One.
 
 Contents:
 
