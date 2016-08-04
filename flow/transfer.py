@@ -34,37 +34,48 @@ class TransferPlugin(Flow, NeedsClient):
     """
     SOURCE = STDIN
 
-    def use(self, data):
+    def use(self, data, require_asset=True, require_source=True, require_destination=True):
         """
         Extract and verify the plugin data that comes from the Transfer Subsystem. We
         should have gotten two FTP addresses, plugin settings in the form of a VDF
         payload containing username and password, as well as a transfer step and
         request to control the workflow and report back progress.
 
+        You can use the ``require_asset``, ``require_source`` and ``require_metadata``
+        flags to control what to require in terms of content in the plugin data.
         """
-        self.source = data.sourceurl
-        assert self.source
-
-        self.destination = data.destinationurl
-        assert self.destination
-
-        self.asset = data.asset
-        assert self.asset is not None
 
         self.settings = data.pluginmetadata
-        assert self.settings is not None
-
-        self.step = data.transferstep
-        assert self.step is not None
-
-        self.request = data.transferrequest
-        assert self.request is not None
+        assert self.settings is not None, 'Missing plugin metadata'
 
         # Use provided credentials
         self.client.session.auth = (
             self.settings.get('plugin.user'),
             self.settings.get('plugin.password')
         )
+
+        try:
+            self.source = data.sourceurl
+            if require_source:
+                assert self.source, 'Missing source'
+
+            self.destination = data.destinationurl
+            if require_destination:
+                assert self.destination, 'Missing destination'
+
+            self.asset = data.asset
+            if require_asset:
+                assert self.asset is not None, 'Missing asset'
+
+            self.step = data.transferstep
+            assert self.step is not None, 'Missing transfer step payload'
+
+            self.request = data.transferrequest
+            assert self.request is not None, 'Missing transfer request payload'
+
+        except AssertionError as e:
+            self.fail(e.message)
+
 
     def update_progress(self, progress):
         """
