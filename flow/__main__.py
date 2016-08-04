@@ -83,7 +83,7 @@ if __name__ == '__main__':
     # Default config
     config.add_section('Flow')
     config.set('Flow', 'app name', 'default')
-    config.set('Flow', 'class', 'path.to.flow.class')
+    config.set('Flow', 'class', None)
     config.set('Flow', 'workers', '1')
 
     config.add_section('Source')
@@ -110,8 +110,18 @@ if __name__ == '__main__':
     config.set('Stomp', 'heartbeat interval', '5')
     config.set('Stomp', 'heartbeat timeout', '10')
 
+    # Read system base config (flow.ini)
+    base_config_dir = os.getenv('PYTHON_CONFIG_ROOT')
+    if base_config_dir is not None:
+        config.read(os.path.join(base_config_dir, 'flow.ini'))
+
     # Read profile (ini file)
     config.read(args.profile)
+
+    # Read system application config (<app name>.ini)
+    app_name = args.instance_name or config.get('Flow', 'app name')
+    if base_config_dir is not None and app_name != 'default':
+        config.read(os.path.join(base_config_dir, app_name + '.ini'))
 
     # Stomp object placeholder
     stomp = None
@@ -123,7 +133,6 @@ if __name__ == '__main__':
 
     # Load application
     Flow = to_class(config.get('Flow', 'class'))
-    app_name = args.instance_name or config.get('Flow', 'app name')
 
     # Show help
     if args.man:
@@ -177,6 +186,7 @@ if __name__ == '__main__':
         'workers': workers,
         '(from ini path) working directory': working_dir,
         '(from main class SOURCE) source class': Flow.SOURCE.__name__,
+        '(from $PYTHON_CONFIG_ROOT) base config dir': base_config_dir,
     }, 'pp')
 
     # Set up Viz One Client Instance
