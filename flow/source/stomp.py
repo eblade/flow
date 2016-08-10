@@ -1,3 +1,5 @@
+import os
+
 from ..needs import NeedsStomp
 from ..base import EventBased
 
@@ -28,7 +30,7 @@ class GenericStompListener(EventBased, NeedsStomp):
                 pass
     """
     def __init__(self, stomp_url):
-        self.stomp_url = stomp_url
+        self.stomp_url = os.path.expandvars(stomp_url)
         self.callback = None
 
     def run(self):
