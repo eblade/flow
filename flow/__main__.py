@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     # Read system application config (<app name>.ini)
     app_name = args.instance_name or config.get('Flow', 'app name')
-    if base_config_dir is not None and app_name != 'default':
+    if base_config_dir is not None and app_name != 'flow':
         config.read(os.path.join(base_config_dir, app_name + '.ini'))
 
     # Stomp object placeholder
