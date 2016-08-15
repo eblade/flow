@@ -38,8 +38,6 @@ Examples of built-in sources are:
   *Reacts on creations, updates and deletions of Unmanaged Files.*
 * Generic Stomp Listener :class:`flow.source.stomp.GenericStompListener`
   *Subscribes to a manually given Stomp URL.*
-* Web Interface :class:`flow.source.web.WebInterface`
-  *Sets up a Web Server to act as interface for the Worker.*
 * Interval :class:`flow.source.interval.Interval`
   *Spawns a worker every nth second.*
 * STDIN :class:`flow.source.local.STDIN`

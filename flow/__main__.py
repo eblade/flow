@@ -261,8 +261,10 @@ if __name__ == '__main__':
 
             source.callback = work
             source.run()
-            while True:
-                time.sleep(1)
+
+            if not source._has_event_loop:
+                while True:
+                    time.sleep(1)
 
     else:
         raise ValueError(
