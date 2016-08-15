@@ -59,35 +59,35 @@ framework can be used. This example features bottle however:
 
     from flow import Flow, EventBased
     from flow.needs import NeedsClient
-	from vizone.resource.asset import get_asset_by_id
+    from vizone.resource.asset import get_asset_by_id
     from one_depends import bottle
 
-	class Web(EventBased, NeedsClient):
-		_has_event_loop = True  # This prevents Flow from running a second
+    class Web(EventBased, NeedsClient):
+        _has_event_loop = True  # This prevents Flow from running a second
                                 # event loop when bottle.run() exists.
-		instance = None
+        instance = None
 
-		def __init__(self, interface='localhost', port=8080):
-			self.server_interface = interface
-			self.server_port = int(port)
-			self.callback = None
+        def __init__(self, interface='localhost', port=8080):
+            self.server_interface = interface
+            self.server_port = int(port)
+            self.callback = None
 
-			logging.log("Web Interface Settings", {
-				'interface': self.server_interface,
-				'port': self.server_port,
-			}, 'pp')
+            logging.log("Web Interface Settings", {
+                'interface': self.server_interface,
+                'port': self.server_port,
+            }, 'pp')
 
-			Web.instance = self  # We use this instance as a singleton 
+            Web.instance = self  # We use this instance as a singleton 
 
-		def run(self):
-			bottle.run(
-				host=self.server_interface,
-				port=self.server_port,
-			)
+        def run(self):
+            bottle.run(
+                host=self.server_interface,
+                port=self.server_port,
+            )
 
 
-	class XmlServer(Flow):
-		SOURCE = Web
+    class XmlServer(Flow):
+        SOURCE = Web
     
         # this class could also implement the run(message) method and act
         # as a worker pool. The web method would then call
@@ -95,8 +95,8 @@ framework can be used. This example features bottle however:
         # is not needed, just leave this class like implemented here.
 
 
-	@bottle.get('/<asset_id>')
-	def get_asset(asset_id):
+    @bottle.get('/<asset_id>')
+    def get_asset(asset_id):
         """
         Serve XML for a given asset id.
         """
