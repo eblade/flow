@@ -158,7 +158,7 @@ def create_or_update_asset(
         logging.info(u'Updating metadata for asset %s.', asset.id)
         for _ in range(3):
             try:
-                client.PUT(asset.describedby_link, payload)
+                asset.describedby_link.metadata = client.PUT(asset.describedby_link, payload)
                 break
             except HTTPServerError:
                 logging.error(u'Could not update metadata for asset %s.', asset.id)
