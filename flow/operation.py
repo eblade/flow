@@ -7,7 +7,7 @@ from vizone.resource.asset import get_asset_by_id, create_asset
 from vizone.payload.asset import Item
 from vizone.payload.common import AtomCategory
 from vizone.payload.metadata import MetadataFormCollection
-from vizone.vdf import Model
+from vizone.vdf import Model, Payload
 
 
 class Retry(Exception):
@@ -26,7 +26,7 @@ def retry_on_conflict(max_retries=3):
     Example:
 
     .. code-block:: python
-        
+
         @retry_on_conflict(max_retries=3)
         def my_function(self, entry, conflict=False):
 
@@ -38,7 +38,7 @@ def retry_on_conflict(max_retries=3):
             self.client.PUT(entry.edit_link, entry)
 
     Note that:
-    
+
     - Any argument will be reused as it, with changes.
 
     - You can raise a ``Retry`` exception to retry for other reasons than
@@ -47,7 +47,7 @@ def retry_on_conflict(max_retries=3):
     class RetryOnConflict(object):
         def __init__(self, func):
             self.func = func
-        
+
         def __call__(self, *args, **kwargs):
             for retry in range(max_retries):
                 try:
@@ -137,7 +137,7 @@ def create_or_update_asset(
         except (HTTPClientError, HTTPServerError):
             logging.error(u'Could not create asset %s, skipping.', id)
             return
-    
+
     # Create payload if metadata is a dict
     if type(metadata) is dict:
         form = metadata.pop('form')
@@ -158,7 +158,7 @@ def create_or_update_asset(
         logging.info(u'Updating metadata for asset %s.', asset.id)
         for _ in range(3):
             try:
-                asset.describedby_link.metadata = client.PUT(asset.describedby_link, payload)
+                asset.describedby_link.metadata = Payload(client.PUT(asset.describedby_link, payload))
                 break
             except HTTPServerError:
                 logging.error(u'Could not update metadata for asset %s.', asset.id)
