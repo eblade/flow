@@ -18,7 +18,10 @@ def _lock(key):
 
 def _unlock(key):
     with _internal_lock:
-        lock = _locks.get(key) or Lock()
+        lock = _locks.get(key)
+
+    if lock is None:
+        return
 
     lock.release()
 
@@ -36,7 +39,7 @@ class Locked(object):
     .. code-block:: python
 
         from flow.lock import Locked
-    
+
         with Locked('mystring'):
             # .. do stuff
 
