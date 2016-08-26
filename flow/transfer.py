@@ -45,6 +45,12 @@ class TransferPlugin(Flow, NeedsClient):
         flags to control what to require in terms of content in the plugin data.
         """
 
+        self.step = data.transferstep
+        assert self.step is not None, 'Missing transfer step payload'
+
+        self.request = data.transferrequest
+        assert self.request is not None, 'Missing transfer request payload'
+
         self.settings = data.pluginmetadata
         assert self.settings is not None, 'Missing plugin metadata'
 
@@ -66,12 +72,6 @@ class TransferPlugin(Flow, NeedsClient):
             self.asset = data.asset
             if require_asset:
                 assert self.asset is not None, 'Missing asset'
-
-            self.step = data.transferstep
-            assert self.step is not None, 'Missing transfer step payload'
-
-            self.request = data.transferrequest
-            assert self.request is not None, 'Missing transfer request payload'
 
         except AssertionError as e:
             self.fail(e.message)
